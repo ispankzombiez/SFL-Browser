@@ -90,8 +90,9 @@ public class MainActivity extends BridgeActivity {
         // Check if "Only Notifications" mode is enabled
         android.content.SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         boolean onlyNotificationsMode = prefs.getBoolean("only_notifications", false);
+        boolean bypassOnlyNotifications = getIntent().getBooleanExtra("bypass_notifications_only", false);
         
-        if (onlyNotificationsMode) {
+        if (onlyNotificationsMode && !bypassOnlyNotifications) {
             Log.d("MainActivity", "Only Notifications mode enabled - redirecting to SettingsActivity");
             // Start SettingsActivity and finish MainActivity
             Intent settingsIntent = new Intent(this, SettingsActivity.class);

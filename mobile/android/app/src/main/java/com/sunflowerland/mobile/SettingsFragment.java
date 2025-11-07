@@ -56,6 +56,27 @@ public class SettingsFragment extends PreferenceFragmentCompat {
             });
         }
 
+        // Handle "Only Notifications" mode toggle
+        SwitchPreferenceCompat onlyNotificationsPref = findPreference("only_notifications");
+        if (onlyNotificationsPref != null) {
+            onlyNotificationsPref.setOnPreferenceChangeListener((preference, newValue) -> {
+                // Toggle changed - no popup needed, the summary text explains what happens
+                return true;
+            });
+        }
+
+        // Handle "Open Game (One Time)" button
+        Preference openWebViewPref = findPreference("open_webview");
+        if (openWebViewPref != null) {
+            openWebViewPref.setOnPreferenceClickListener(preference -> {
+                // Start MainActivity temporarily
+                Intent mainIntent = new Intent(getActivity(), MainActivity.class);
+                mainIntent.putExtra("bypass_notifications_only", true);
+                startActivity(mainIntent);
+                return true;
+            });
+        }
+
         // Start Notification Worker
         Preference startManagerPref = findPreference("Start_Notification_Manager");
         if (startManagerPref != null) {
