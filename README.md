@@ -14,7 +14,7 @@ An unofficial Android mobile app for [Sunflower Land](https://sunflower-land.com
 
 Want to try the app before anyone else? Join our early access program!
 
-📝 **[Fill out this form here](https://forms.gle/Wc5oQVWpg8nT8ycB8)** to request early access
+📝 **[Fill out this form](https://forms.gle/Wc5oQVWpg8nT8ycB8)** to request early access
 
 📱 Once early-access has been granted, you can download the app on Google Play **[here](https://play.google.com/store/apps/details?id=com.sunflowerland.mobile)**
 
