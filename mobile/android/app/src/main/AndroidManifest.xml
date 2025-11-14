@@ -125,6 +125,14 @@
             </intent-filter>
         </activity>
 
+        <!-- Wallet Manager Activity - allows users to select and connect to installed crypto wallets -->
+        <activity
+            android:name=".WalletManagerActivity"
+            android:label="Connect Wallet"
+            android:theme="@style/AppTheme.NoActionBar"
+            android:exported="false"
+            android:parentActivityName=".MainActivity" />
+
         <!-- Category Settings Activities -->
         <activity
             android:name=".CropSettingsActivity"
@@ -173,6 +181,19 @@
             android:label="Resource Notifications"
             android:theme="@style/AppTheme.NoActionBar"
             android:parentActivityName=".SettingsActivity" />
+
+        <activity
+            android:name=".SkillSettingsActivity"
+            android:label="Skill Cooldown Notifications"
+            android:theme="@style/AppTheme.NoActionBar"
+            android:parentActivityName=".SettingsActivity" />
+
+        <activity
+            android:name=".NotificationTestingActivity"
+            android:label="Notification Testing"
+            android:theme="@style/AppTheme.NoActionBar"
+            android:parentActivityName=".SettingsActivity"
+            android:exported="false" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
