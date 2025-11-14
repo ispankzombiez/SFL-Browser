@@ -11,8 +11,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Collections;
-import java.text.SimpleDateFormat;
-import java.util.Locale;
 
 /**
  * Displays the notification log in chronological order (soonest ready times first)
@@ -54,45 +52,36 @@ public class NotificationLogActivity extends AppCompatActivity {
             reader.close();
             
             // Find header and notification entries
-            StringBuilder header = new StringBuilder();
+            String generatedAt = "";
             List<NotificationEntry> notifications = new ArrayList<>();
             
-            boolean inHeader = true;
             for (String logLine : lines) {
-                if (inHeader) {
-                    if (logLine.startsWith("[")) {
-                        inHeader = false;
-                        // Parse this line as notification
-                        NotificationEntry entry = parseNotificationLine(logLine);
-                        if (entry != null) {
-                            notifications.add(entry);
-                        }
-                    } else if (!logLine.equals("(No upcoming notifications scheduled)")) {
-                        header.append(logLine).append("\n");
-                    }
+                if (logLine.startsWith("Generated at:")) {
+                    generatedAt = logLine;
                 } else if (logLine.startsWith("[")) {
                     // Parse as notification
                     NotificationEntry entry = parseNotificationLine(logLine);
-                    if (entry != null) {
+                    if (entry != null && entry.remainingMs > 0) {
+                        // Only include future notifications (remainingMs > 0)
                         notifications.add(entry);
                     }
-                } else if (!logLine.trim().isEmpty()) {
-                    // Additional info line
                 }
             }
             
             // Sort notifications by ready time (soonest first)
-            Collections.sort(notifications, (a, b) -> Long.compare(a.readyTimeMs, b.readyTimeMs));
+            Collections.sort(notifications, (a, b) -> Long.compare(a.remainingMs, b.remainingMs));
             
-            // Rebuild output with sorted notifications
+            // Format output in plain English
             StringBuilder result = new StringBuilder();
-            result.append(header);
+            result.append("📋 UPCOMING NOTIFICATIONS\n");
+            result.append("════════════════════════════════════════\n\n");
+            result.append(generatedAt).append("\n\n");
             
             if (notifications.isEmpty()) {
-                result.append("(No upcoming notifications scheduled)\n");
+                result.append("No upcoming notifications scheduled.\n");
             } else {
                 for (NotificationEntry entry : notifications) {
-                    result.append(entry.originalLine).append("\n");
+                    result.append(entry.formatForDisplay()).append("\n\n");
                 }
             }
             
@@ -103,8 +92,8 @@ public class NotificationLogActivity extends AppCompatActivity {
     }
     
     /**
-     * Parse a notification line to extract time for sorting
-     * Format: "[h:mm a] quantity name (ready in Xm)"
+     * Parse a notification line to extract remaining time for sorting
+     * Format: "[h:mm a] quantity name (ready in Xm)" or "(ready in Xh Xm)" or "(now)"
      */
     private NotificationEntry parseNotificationLine(String line) {
         try {
@@ -115,24 +104,64 @@ public class NotificationLogActivity extends AppCompatActivity {
                 return null;
             }
             
-            String timeStr = line.substring(timeStart + 1, timeEnd);
+            String readyTime = line.substring(timeStart + 1, timeEnd);
             
-            // Parse the time string to get milliseconds
-            // We assume it's today's time, so we calculate from current day start
-            SimpleDateFormat sdf = new SimpleDateFormat("h:mm a", Locale.US);
-            long readyTimeMs = sdf.parse(timeStr).getTime();
-            
-            // Adjust for today's date
-            long currentTimeMs = System.currentTimeMillis();
-            long todayStartMs = (currentTimeMs / (24 * 60 * 60 * 1000)) * (24 * 60 * 60 * 1000);
-            long todayReadyTimeMs = todayStartMs + (readyTimeMs % (24 * 60 * 60 * 1000));
-            
-            // If time is in the past today, assume it's tomorrow
-            if (todayReadyTimeMs < currentTimeMs) {
-                todayReadyTimeMs += 24 * 60 * 60 * 1000;
+            // Extract remaining time from "(ready in ...)"
+            int readyInStart = line.indexOf("(ready in ");
+            if (readyInStart == -1) {
+                return null;
             }
             
-            return new NotificationEntry(line, todayReadyTimeMs);
+            int readyInEnd = line.indexOf(")", readyInStart);
+            if (readyInEnd == -1) {
+                return null;
+            }
+            
+            String readyInStr = line.substring(readyInStart + 10, readyInEnd).trim();
+            
+            long remainingMs = 0;
+            
+            if (readyInStr.equals("now")) {
+                remainingMs = 0;
+            } else {
+                // Parse "Xh Ym" or "Xm" format
+                String[] parts = readyInStr.split("\\s+");
+                for (String part : parts) {
+                    if (part.endsWith("h")) {
+                        long hours = Long.parseLong(part.substring(0, part.length() - 1));
+                        remainingMs += hours * 60 * 60 * 1000;
+                    } else if (part.endsWith("m")) {
+                        long minutes = Long.parseLong(part.substring(0, part.length() - 1));
+                        remainingMs += minutes * 60 * 1000;
+                    }
+                }
+            }
+            
+            // Extract quantity and name
+            // Format: "[h:mm a] quantity name (ready in Xm)"
+            String afterTime = line.substring(timeEnd + 1).trim(); // Everything after "]"
+            
+            // Find where the "(ready in" part starts
+            int parenStart = afterTime.indexOf("(ready in");
+            String itemInfo = afterTime.substring(0, parenStart).trim();
+            
+            // Split into quantity and name
+            String[] parts = itemInfo.split("\\s+", 2);
+            int quantity = 1;
+            String itemName = itemInfo;
+            
+            if (parts.length == 2) {
+                try {
+                    quantity = Integer.parseInt(parts[0]);
+                    itemName = parts[1];
+                } catch (NumberFormatException e) {
+                    // First part isn't a number, use whole thing as name
+                    itemName = itemInfo;
+                    quantity = 1;
+                }
+            }
+            
+            return new NotificationEntry(line, remainingMs, itemName, quantity, readyTime);
         } catch (Exception e) {
             return null;
         }
@@ -143,11 +172,39 @@ public class NotificationLogActivity extends AppCompatActivity {
      */
     private static class NotificationEntry {
         String originalLine;
-        long readyTimeMs;
+        long remainingMs;
+        String itemName;
+        int quantity;
+        String readyTime;
         
-        NotificationEntry(String line, long timeMs) {
+        NotificationEntry(String line, long timeMs, String name, int qty, String time) {
             this.originalLine = line;
-            this.readyTimeMs = timeMs;
+            this.remainingMs = timeMs;
+            this.itemName = name;
+            this.quantity = qty;
+            this.readyTime = time;
+        }
+        
+        String formatForDisplay() {
+            String timeRemaining;
+            if (remainingMs <= 0) {
+                timeRemaining = "0 minutes";
+            } else {
+                long hours = remainingMs / (60 * 60 * 1000);
+                long minutes = (remainingMs % (60 * 60 * 1000)) / (60 * 1000);
+                
+                if (hours > 0) {
+                    timeRemaining = String.format("%d hour%s %d minute%s",
+                        hours, hours != 1 ? "s" : "",
+                        minutes, minutes != 1 ? "s" : "");
+                } else {
+                    timeRemaining = String.format("%d minute%s",
+                        minutes, minutes != 1 ? "s" : "");
+                }
+            }
+            
+            return String.format("%s - %d %s - (%s)",
+                readyTime, quantity, itemName, timeRemaining);
         }
     }
 }

@@ -249,7 +249,14 @@ public class NotificationManagerService extends Service {
             // Extract sick animals for health monitoring
             List<SickAnimal> sickAnimals = CategoryExtractors.extractSickAnimals(farmObject);
 
-            Log.d(TAG, "Step 2 Complete: Extracted " + crops.size() + " crop(s), " + fruits.size() + " fruit(s), " + resources.size() + " resource(s), " + animals.size() + " animal(s), " + cooking.size() + " cooking item(s), " + composters.size() + " composter(s), " + flowers.size() + " flower(s), " + craftingBox.size() + " crafting box item(s), " + beehives.size() + " beehive item(s), " + cropMachine.size() + " crop machine item(s), " + sunstones.size() + " sunstone(s), " + dailyReset.size() + " daily reset(s), " + soldListings.size() + " sold listing(s), " + floatingIsland.size() + " floating island item(s), " + sickAnimals.size() + " sick animal(s)");
+            // Extract skill cooldown notifications
+            List<FarmItem> skillCooldowns = new ArrayList<>();
+            if (prefs.getBoolean("category_skill_cooldown", true) && farmObject.has("bumpkin")) {
+                JsonObject bumpkinObject = farmObject.getAsJsonObject("bumpkin");
+                skillCooldowns = SkillExtractors.extractSkillCooldowns(bumpkinObject);
+            }
+
+            Log.d(TAG, "Step 2 Complete: Extracted " + crops.size() + " crop(s), " + fruits.size() + " fruit(s), " + resources.size() + " resource(s), " + animals.size() + " animal(s), " + cooking.size() + " cooking item(s), " + composters.size() + " composter(s), " + flowers.size() + " flower(s), " + craftingBox.size() + " crafting box item(s), " + beehives.size() + " beehive item(s), " + cropMachine.size() + " crop machine item(s), " + sunstones.size() + " sunstone(s), " + dailyReset.size() + " daily reset(s), " + soldListings.size() + " sold listing(s), " + floatingIsland.size() + " floating island item(s), " + sickAnimals.size() + " sick animal(s), " + skillCooldowns.size() + " skill cooldown(s)");
 
             // Step 3: Cluster crops, fruits, resources, animals, and cooking by category-specific rules
             Log.d(TAG, "Step 3: Clustering crops, fruits, resources, animals & cooking...");
@@ -338,6 +345,12 @@ public class NotificationManagerService extends Service {
             List<NotificationGroup> floatingIslandGroups = floatingIslandClusterer.cluster(floatingIsland);
             allGroups.addAll(floatingIslandGroups);
             Log.d(TAG, "  Floating Island: Created " + floatingIslandGroups.size() + " group(s)");
+            
+            // Cluster skill cooldown notifications
+            CategoryClusterer skillClusterer = ClustererFactory.getClusterer("skill_cooldown", this);
+            List<NotificationGroup> skillGroups = skillClusterer.cluster(skillCooldowns);
+            allGroups.addAll(skillGroups);
+            Log.d(TAG, "  Skill Cooldowns: Created " + skillGroups.size() + " group(s)");
 
             // Handle sick animal notifications with state tracking
             if (prefs.getBoolean("category_animal_sick", true)) {

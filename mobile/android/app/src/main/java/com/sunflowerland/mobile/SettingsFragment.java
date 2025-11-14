@@ -26,6 +26,16 @@ public class SettingsFragment extends PreferenceFragmentCompat {
             });
         }
 
+        // Debug/Dev: Notification Testing
+        Preference notificationTestingPref = findPreference("notification_testing");
+        if (notificationTestingPref != null) {
+            notificationTestingPref.setOnPreferenceClickListener(preference -> {
+                Intent intent = new Intent(getActivity(), NotificationTestingActivity.class);
+                startActivity(intent);
+                return true;
+            });
+        }
+
         // Debug/Dev: View Raw JSON
         Preference viewRawJsonPref = findPreference("view_raw_json");
         if (viewRawJsonPref != null) {
@@ -73,6 +83,16 @@ public class SettingsFragment extends PreferenceFragmentCompat {
                 Intent mainIntent = new Intent(getActivity(), MainActivity.class);
                 mainIntent.putExtra("bypass_notifications_only", true);
                 startActivity(mainIntent);
+                return true;
+            });
+        }
+
+        // Handle "Default Wallet" button
+        Preference defaultWalletPref = findPreference("default_wallet");
+        if (defaultWalletPref != null) {
+            updateDefaultWalletSummary(defaultWalletPref);
+            defaultWalletPref.setOnPreferenceClickListener(preference -> {
+                showWalletSelectionDialog();
                 return true;
             });
         }
@@ -148,6 +168,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
                         editor.putBoolean("category_auction", true);
                         editor.putBoolean("category_pet_sleep", true);
                         editor.putBoolean("category_animal_sick", true);
+                        editor.putBoolean("category_skill_cooldown", true);
                         editor.apply();
                         
                         com.sunflowerland.mobile.BaseCategorySettingsActivity.turnOnAllToggles(requireContext(), "crop", new String[]{
@@ -173,6 +194,9 @@ public class SettingsFragment extends PreferenceFragmentCompat {
                         });
                         com.sunflowerland.mobile.BaseCategorySettingsActivity.turnOnAllToggles(requireContext(), "composter", new String[]{
                             "Composter", "Turbo Composter", "Premium Composter"
+                        });
+                        com.sunflowerland.mobile.BaseCategorySettingsActivity.turnOnAllToggles(requireContext(), "skill", new String[]{
+                            "Instant Growth", "Tree Blitz", "Instant Gratification", "Barnyard Rouse", "Petal Blessed", "Greenhouse Guru", "Grease Lightning"
                         });
                         // Crafting now uses a simple boolean toggle (category_crafting) with no per-item toggles
                         requireActivity().recreate();
@@ -250,6 +274,15 @@ public class SettingsFragment extends PreferenceFragmentCompat {
             });
         }
 
+        Preference skillsPref = findPreference("category_skills");
+        if (skillsPref != null) {
+            skillsPref.setOnPreferenceClickListener(preference -> {
+                Intent intent = new Intent(getActivity(), SkillSettingsActivity.class);
+                startActivity(intent);
+                return true;
+            });
+        }
+
         Preference animalsPref = findPreference("category_animals");
         if (animalsPref != null) {
             animalsPref.setOnPreferenceClickListener(preference -> {
@@ -280,6 +313,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
                         editor.putBoolean("category_auction", false);
                         editor.putBoolean("category_pet_sleep", false);
                         editor.putBoolean("category_animal_sick", false);
+                        editor.putBoolean("category_skill_cooldown", false);
                         editor.apply();
                         
                         com.sunflowerland.mobile.BaseCategorySettingsActivity.turnOffAllToggles(requireContext(), "crop", new String[]{
@@ -325,6 +359,55 @@ public class SettingsFragment extends PreferenceFragmentCompat {
         }
         
         // Category toggles are now SwitchPreferenceCompat and do not need click listeners
+    }
+
+    /**
+     * Update the summary of the default wallet preference to show the selected wallet.
+     */
+    private void updateDefaultWalletSummary(Preference pref) {
+        String walletName = com.sunflowerland.mobile.wallet.WalletPreferenceManager.getDefaultWalletName(requireContext());
+        if (walletName != null) {
+            pref.setSummary("Selected: " + walletName);
+        } else {
+            pref.setSummary("Select your default wallet for the game");
+        }
+    }
+
+    /**
+     * Show a dialog to select the default wallet.
+     * Currently shows MetaMask only.
+     */
+    private void showWalletSelectionDialog() {
+        // Currently only MetaMask is supported
+        String[] walletNames = {"MetaMask"};
+        String[] walletIds = {"metamask"};
+
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("Select Default Wallet")
+            .setItems(walletNames, (dialog, which) -> {
+                String selectedId = walletIds[which];
+                String selectedName = walletNames[which];
+                
+                // Save the selection
+                com.sunflowerland.mobile.wallet.WalletPreferenceManager.setDefaultWallet(
+                    requireContext(),
+                    selectedId,
+                    selectedName
+                );
+                
+                // Update the summary
+                Preference pref = findPreference("default_wallet");
+                if (pref != null) {
+                    updateDefaultWalletSummary(pref);
+                }
+                
+                android.widget.Toast.makeText(
+                    requireContext(),
+                    "Default wallet set to: " + selectedName,
+                    android.widget.Toast.LENGTH_SHORT
+                ).show();
+            })
+            .show();
     }
     
 }

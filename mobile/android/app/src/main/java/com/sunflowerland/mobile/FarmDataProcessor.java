@@ -143,6 +143,15 @@ public class FarmDataProcessor {
             List<FarmItem> cropMachine = CategoryExtractors.extractCropMachine(farmObject);
             List<FarmItem> sunstones = CategoryExtractors.extractSunstones(farmObject);
 
+            // Extract skill cooldowns if enabled
+            List<FarmItem> skillCooldowns = new ArrayList<>();
+            if (prefs.getBoolean("category_skill_cooldown", true)) {
+                JsonObject bumpkinObject = farmObject.getAsJsonObject("bumpkin");
+                if (bumpkinObject != null) {
+                    skillCooldowns = SkillExtractors.extractSkillCooldowns(bumpkinObject);
+                }
+            }
+
             // Extract daily reset if enabled
             List<FarmItem> dailyReset = new ArrayList<>();
             if (prefs.getBoolean("category_daily_reset", true)) {
@@ -195,6 +204,7 @@ public class FarmDataProcessor {
             allExtractedItems.addAll(beehives);
             allExtractedItems.addAll(cropMachine);
             allExtractedItems.addAll(sunstones);
+            allExtractedItems.addAll(skillCooldowns);
             allExtractedItems.addAll(dailyReset);
             allExtractedItems.addAll(floatingIsland);
             allExtractedItems.addAll(auctions);
@@ -256,9 +266,18 @@ public class FarmDataProcessor {
             List<NotificationGroup> sunstoneGroups = sunstoneClusterer.cluster(sunstones);
             allGroups.addAll(sunstoneGroups);
 
+            CategoryClusterer skillCooldownClusterer = ClustererFactory.getClusterer("skill_cooldown", context);
+            List<NotificationGroup> skillCooldownGroups = skillCooldownClusterer.cluster(skillCooldowns);
+            allGroups.addAll(skillCooldownGroups);
+
             CategoryClusterer dailyResetClusterer = ClustererFactory.getClusterer("daily_reset", context);
             List<NotificationGroup> dailyResetGroups = dailyResetClusterer.cluster(dailyReset);
             allGroups.addAll(dailyResetGroups);
+
+            // Convert sold marketplace listings to notification groups
+            List<NotificationGroup> marketplaceGroups = convertSoldListingsToNotifications(soldListings);
+            allGroups.addAll(marketplaceGroups);
+            Log.d(TAG, "  Marketplace: Created " + marketplaceGroups.size() + " group(s)");
 
             CategoryClusterer floatingIslandClusterer = ClustererFactory.getClusterer("floating_island", context);
             List<NotificationGroup> floatingIslandGroups = floatingIslandClusterer.cluster(floatingIsland);
@@ -406,7 +425,7 @@ public class FarmDataProcessor {
      */
     private static void saveRawJSON(Context context, String rawJSON) {
         try {
-            File file = new File(context.getFilesDir(), "api_response_raw.json");
+            File file = new File(context.getFilesDir(), "farm_api_raw.json");
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
                 writer.write(rawJSON);
                 writer.flush();
@@ -658,5 +677,31 @@ public class FarmDataProcessor {
     private static String formatAuctionDisplayName(String itemName, String details) {
         String currencyName = getAuctionCurrencyName(details);
         return itemName + " " + currencyName + " Auction";
+    }
+
+    /**
+     * Convert sold marketplace listings to notification groups
+     */
+    private static List<NotificationGroup> convertSoldListingsToNotifications(List<MarketplaceListingsExtractor.SoldListing> soldListings) {
+        List<NotificationGroup> groups = new ArrayList<>();
+        
+        for (MarketplaceListingsExtractor.SoldListing sold : soldListings) {
+            try {
+                NotificationGroup group = new NotificationGroup();
+                group.category = "marketplace";
+                group.name = sold.itemName;
+                group.quantity = (int) sold.amount;  // Cast long to int
+                group.details = sold.amount + " " + sold.itemName + " for " + String.format("%.4f", sold.sfl) + " SFL";
+                group.earliestReadyTime = sold.fulfilledAt; // Use fulfilled timestamp as the "ready time"
+                group.groupId = "marketplace_" + sold.listingId; // Unique ID based on listing ID
+                
+                groups.add(group);
+                Log.d(TAG, "Created marketplace notification: " + sold.amount + " " + sold.itemName + " sold for " + sold.sfl + " SFL");
+            } catch (Exception e) {
+                Log.w(TAG, "Error converting sold listing to notification: " + e.getMessage());
+            }
+        }
+        
+        return groups;
     }
 }

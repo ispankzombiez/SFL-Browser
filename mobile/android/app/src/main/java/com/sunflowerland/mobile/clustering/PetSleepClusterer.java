@@ -127,6 +127,32 @@ public class PetSleepClusterer {
             }
         }
 
+        // Also extract NFT pets from the 'nfts' section if present
+        if (petsData.has("nfts") && petsData.get("nfts").isJsonObject()) {
+            JsonObject nfts = petsData.getAsJsonObject("nfts");
+            for (String nftId : nfts.keySet()) {
+                JsonElement nftElement = nfts.get(nftId);
+                if (!nftElement.isJsonObject()) {
+                    continue;
+                }
+                JsonObject nftPet = nftElement.getAsJsonObject();
+                String name = null;
+                long pettedAt = -1;
+                if (nftPet.has("name")) {
+                    name = nftPet.get("name").getAsString();
+                }
+                if (nftPet.has("pettedAt")) {
+                    pettedAt = nftPet.get("pettedAt").getAsLong();
+                }
+                if (name != null && pettedAt > 0) {
+                    PetSleepData petSleepData = new PetSleepData(name, pettedAt, "nfts");
+                    allPets.add(petSleepData);
+                    Log.d(TAG, "Extracted NFT pet: " + name + " from nfts category" + 
+                          " pettedAt: " + formatTimestamp(pettedAt));
+                }
+            }
+        }
+
         return allPets;
     }
 

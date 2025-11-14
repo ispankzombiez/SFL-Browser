@@ -20,6 +20,10 @@
             android:title="Auto Start Worker"
             android:summary="Auto starts the notification worker if it was not running when the Sunflower Land main activity opens"
             android:defaultValue="true" />
+        <Preference
+            android:key="default_wallet"
+            android:title="Default Wallet"
+            android:summary="Select your default wallet for the game" />
         <SwitchPreferenceCompat
             android:key="only_notifications"
             android:title="Notifications Only"
@@ -113,6 +117,12 @@
             android:defaultValue="true" />
 
         <Preference
+            android:key="category_skills"
+            android:title="Skills"
+            android:summary="Tap to customize skill cooldown notifications"
+            android:icon="@android:drawable/ic_menu_view" />
+
+        <Preference
             android:key="category_crops"
             android:title="Crops"
             android:summary="Tap to customize individual crops"
@@ -164,6 +174,10 @@
 
     <!-- Debug/Dev Section -->
     <PreferenceCategory android:title="Debug/Dev">
+        <Preference
+            android:key="notification_testing"
+            android:title="Notification Testing"
+            android:summary="Send test notifications to preview format and icons" />
         <Preference
             android:key="view_raw_json"
             android:title="View Raw JSON"

@@ -158,10 +158,7 @@ public class NotificationReceiver extends BroadcastReceiver {
                 // Daily reset notification
                 notificationTitle = "Daily Reset!";
                 notificationText = "Your farm has been reset. Time to start a new day!";
-                
-                // Clear debug log at 00:00 UTC (when daily reset notification fires)
-                DebugLog.clearLog(context);
-                DebugLog.log("=== Daily Reset notification at 00:00 UTC - Debug log cleared ===");
+                // Note: Debug log is no longer auto-cleared here - user must manually clear via settings
             } else if ("composters".equals(category) && details != null && !details.isEmpty()) {
                 // Composter notification - show produced items
                 notificationTitle = itemName + " is ready!";
@@ -291,6 +288,34 @@ public class NotificationReceiver extends BroadcastReceiver {
             case "Animals just got sick!":
                 // Use chicken icon for sick animal notifications
                 return context.getResources().getIdentifier("ic_chicken", "drawable", context.getPackageName());
+            case "Beehive Swarm":
+                // Use beehive icon for swarm alerts
+                return context.getResources().getIdentifier("ic_beehive", "drawable", context.getPackageName());
+            case "Beehive Full":
+                // Use beehive icon for fullness alerts
+                return context.getResources().getIdentifier("ic_beehive", "drawable", context.getPackageName());
+            // Skill cooldown icons
+            case "Instant Growth":
+                return context.getResources().getIdentifier("ic_instant_growth", "drawable", context.getPackageName());
+            case "Tree Blitz":
+                return context.getResources().getIdentifier("ic_tree_blitz", "drawable", context.getPackageName());
+            case "Instant Gratification":
+                return context.getResources().getIdentifier("ic_instant_gratification", "drawable", context.getPackageName());
+            case "Barnyard Rouse":
+                return context.getResources().getIdentifier("ic_barnyard_rouse", "drawable", context.getPackageName());
+            case "Petal Blessed":
+                return context.getResources().getIdentifier("ic_petal_blessed", "drawable", context.getPackageName());
+            case "Greenhouse Guru":
+                return context.getResources().getIdentifier("ic_greenhouse_guru", "drawable", context.getPackageName());
+            case "Grease Lightning":
+                return context.getResources().getIdentifier("ic_grease_lightning", "drawable", context.getPackageName());
+        }
+        
+        // Check if itemName starts with "Beehive" (e.g., "Beehive 1", "Beehive 2", etc.)
+        // These come from API notifications
+        if (itemName.startsWith("Beehive")) {
+            Log.d("NOTIFICATION_DEBUG", "Detected beehive notification: " + itemName);
+            return context.getResources().getIdentifier("ic_beehive", "drawable", context.getPackageName());
         }
         
         // Map item names to drawable resource names (lowercase, no spaces)

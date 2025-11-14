@@ -322,6 +322,18 @@ public class MainActivity extends BridgeActivity {
                     @Override
                     public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
                         Log.d("MainActivity", ">>> onPageStarted: " + url);
+                        
+                        // Inject wallet provider early, before page scripts run
+                        try {
+                            String walletScript = injectWalletProvider();
+                            if (walletScript != null && !walletScript.isEmpty()) {
+                                Log.d("MainActivity", "Injecting wallet provider at page start...");
+                                view.evaluateJavascript(walletScript, null);
+                            }
+                        } catch (Exception e) {
+                            Log.e("MainActivity", "Error injecting wallet at page start: " + e.getMessage());
+                        }
+                        
                         // Intercept Coinbase URLs before they load
                         if (url.contains("keys.coinbase.com") || url.contains("coinbase.com") || url.contains("login.coinbase")) {
                             Log.d("MainActivity", "*** INTERCEPTED COINBASE URL in onPageStarted: " + url);
@@ -353,6 +365,13 @@ public class MainActivity extends BridgeActivity {
                             @Override
                             public void run() {
                                 try {
+                                    // Inject wallet provider based on user's default wallet selection
+                                    String walletScript = injectWalletProvider();
+                                    if (walletScript != null && !walletScript.isEmpty()) {
+                                        Log.d("MainActivity", "Injecting wallet provider...");
+                                        view.evaluateJavascript(walletScript, null);
+                                    }
+                                    
                                     // Inject console logger + intercept non-http(s) links and window.open to route via a safe bridge URL
                                     String script = "(function(){" +
                                         "console.log('WebView ready - installing native link interceptor');" +
@@ -510,6 +529,19 @@ public class MainActivity extends BridgeActivity {
                             String msg = u.getQueryParameter("msg");
                             if (msg != null) {
                                 Log.i("JS_CONSOLE", "(unified) " + Uri.decode(msg));
+                            }
+                            return true;
+                        }
+                        
+                        // Handle wallet manager bridge URL (UNIFIED CLIENT)
+                        if (url.startsWith("https://__native_bridge__/openWalletManager")) {
+                            Log.d("MainActivity", "Opening Wallet Manager from game");
+                            try {
+                                Intent walletIntent = new Intent(MainActivity.this, 
+                                    Class.forName("com.sunflowerland.mobile.WalletManagerActivity"));
+                                startActivityForResult(walletIntent, 1001); // REQUEST_CODE for wallet connection
+                            } catch (ClassNotFoundException e) {
+                                Log.e("MainActivity", "Failed to launch WalletManagerActivity", e);
                             }
                             return true;
                         }
@@ -1495,5 +1527,86 @@ public class MainActivity extends BridgeActivity {
             alert.show();
         }
     }
-}
 
+    /**
+     * Handle activity results from WalletManagerActivity
+     * Receives wallet connection results and notifies the game
+     */
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        
+        // REQUEST_CODE 1001 is for wallet connection
+        if (requestCode == 1001) {
+            if (resultCode == RESULT_OK && data != null) {
+                String walletId = data.getStringExtra("wallet_id");
+                String walletName = data.getStringExtra("wallet_name");
+                String address = data.getStringExtra("address");
+                String chainId = data.getStringExtra("chain_id");
+                
+                Log.d("MainActivity", "Wallet connection result: " + walletName + " - " + address);
+                
+                // Notify game JavaScript about successful wallet connection
+                if (mainWebView != null) {
+                    String jsPayload = "window.dispatchEvent(new CustomEvent('walletConnected', { " +
+                            "detail: { " +
+                            "walletId: '" + walletId + "'," +
+                            "walletName: '" + walletName + "'," +
+                            "address: '" + (address != null ? address : "") + "'," +
+                            "chainId: '" + (chainId != null ? chainId : "") + "'" +
+                            "}}));";
+                    
+                    mainWebView.evaluateJavascript(jsPayload, null);
+                }
+            } else {
+                Log.d("MainActivity", "Wallet connection cancelled");
+                
+                // Notify game JavaScript about cancellation
+                if (mainWebView != null) {
+                    mainWebView.evaluateJavascript(
+                            "window.dispatchEvent(new CustomEvent('walletConnectionCancelled', {}));",
+                            null);
+                }
+            }
+        }
+    }
+
+    /**
+     * Injects the selected wallet provider into the page JavaScript.
+     * This tells the game which wallet is available.
+     * Currently only supports MetaMask.
+     */
+    private String injectWalletProvider() {
+        String walletId = com.sunflowerland.mobile.wallet.WalletPreferenceManager.getDefaultWalletId(this);
+        String walletName = com.sunflowerland.mobile.wallet.WalletPreferenceManager.getDefaultWalletName(this);
+
+        if (walletId == null || walletId.isEmpty()) {
+            Log.d("MainActivity", "No default wallet selected");
+            return "";
+        }
+
+        Log.d("MainActivity", "Injecting wallet provider: " + walletName + " (" + walletId + ")");
+
+        if ("metamask".equals(walletId)) {
+            // Inject MetaMask provider with proper structure
+            return "(function() {" +
+                    "console.log('Injecting MetaMask wallet provider');" +
+                    "if (!window.ethereum) {" +
+                    "  window.ethereum = {" +
+                    "    isMetaMask: true," +
+                    "    isConnected: function() { return true; }," +
+                    "    request: function(req) { return Promise.resolve({}); }," +
+                    "    on: function() {}," +
+                    "    off: function() {}," +
+                    "    removeListener: function() {}," +
+                    "    send: function(payload, callback) { callback(null, {}); }," +
+                    "    sendAsync: function(payload, callback) { callback(null, {}); }" +
+                    "  };" +
+                    "  console.log('MetaMask provider injected');" +
+                    "}" +
+                    "})();";
+        }
+
+        return "";
+    }
+}

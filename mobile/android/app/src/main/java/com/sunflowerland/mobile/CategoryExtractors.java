@@ -17,6 +17,8 @@ import java.util.Locale;
 import java.util.Map;
 
 public class CategoryExtractors {
+    // Map to store flower bed finish times (id -> finishTime)
+    private static Map<String, Long> flowerBedFinishTimes = new HashMap<>();
     private static final String TAG = "CategoryExtractors";
 
     /**
@@ -596,13 +598,12 @@ public class CategoryExtractors {
                                     lovedAt = animal.get("lovedAt").getAsLong();
                                 }
                                 
-                                // Calculate loveTime: lovedAt + ((awakeAt - asleepAt) / 3) (or asleepAt if lovedAt missing/0)
+                                // Calculate loveTime using game logic: max of both thresholds
+                                // Animal needs love when BOTH conditions are true (asleepAt + 1/3 cycle AND lovedAt + 1/3 cycle)
                                 long oneThirdCycle = (awakeAt - asleepAt) / 3;
-                                if (lovedAt > 0) {
-                                    loveTime = lovedAt + oneThirdCycle;
-                                } else {
-                                    loveTime = asleepAt + oneThirdCycle;
-                                }
+                                long sleepThreshold = asleepAt + oneThirdCycle;
+                                long loveThreshold = lovedAt + oneThirdCycle;
+                                loveTime = Math.max(sleepThreshold, loveThreshold);
                                 
                                 // Only include love notification if it occurs before awakeAt
                                 if (loveTime < awakeAt && loveTime > currentTime) {
@@ -697,13 +698,12 @@ public class CategoryExtractors {
                                     lovedAt = animal.get("lovedAt").getAsLong();
                                 }
                                 
-                                // Calculate loveTime: lovedAt + ((awakeAt - asleepAt) / 3) (or asleepAt if lovedAt missing/0)
+                                // Calculate loveTime using game logic: max of both thresholds
+                                // Animal needs love when BOTH conditions are true (asleepAt + 1/3 cycle AND lovedAt + 1/3 cycle)
                                 long oneThirdCycle = (awakeAt - asleepAt) / 3;
-                                if (lovedAt > 0) {
-                                    loveTime = lovedAt + oneThirdCycle;
-                                } else {
-                                    loveTime = asleepAt + oneThirdCycle;
-                                }
+                                long sleepThreshold = asleepAt + oneThirdCycle;
+                                long loveThreshold = lovedAt + oneThirdCycle;
+                                loveTime = Math.max(sleepThreshold, loveThreshold);
                                 
                                 // Only include love notification if it occurs before awakeAt
                                 if (loveTime < awakeAt && loveTime > currentTime) {
@@ -1140,6 +1140,9 @@ public class CategoryExtractors {
         Log.d(TAG, "Extracting flowers...");
         List<FarmItem> flowers = new ArrayList<>();
 
+    // Clear the map before each extraction
+    flowerBedFinishTimes.clear();
+
         if (farmData == null) {
             Log.w(TAG, "farmData is null");
             return flowers;
@@ -1168,14 +1171,14 @@ public class CategoryExtractors {
             for (String bedId : flowerBeds.keySet()) {
                 try {
                     JsonObject bedData = flowerBeds.getAsJsonObject(bedId);
-                    
+
                     // Check if bed has flower object
                     if (!bedData.has("flower") || bedData.get("flower").isJsonNull()) {
                         continue;
                     }
-                    
+
                     JsonObject flowerData = bedData.getAsJsonObject("flower");
-                    
+
                     // Extract flower name
                     String name = getJsonString(flowerData, "name");
                     if (name == null || name.isEmpty()) {
@@ -1198,21 +1201,25 @@ public class CategoryExtractors {
                         Log.w(TAG, "Flower bed " + bedId + ": Unknown flower '" + name + "' or invalid baseTime");
                         continue;
                     }
-                    
-                    long readyTime = plantedAt + baseTime;
-                    
+
+                    long finishTime = plantedAt + baseTime;
+                    // Store finish time for this flower bed
+                    flowerBedFinishTimes.put(bedId, finishTime);
+
+                    long readyTime = finishTime;
+
                     // Only include flowers that will be ready in the future (not already passed)
                     if (readyTime <= currentTime) {
-                        Log.d(TAG, "Skipping flower: 1 " + name + 
-                              " (ready=" + formatTimestamp(readyTime) + 
+                        Log.d(TAG, "Skipping flower: 1 " + name +
+                              " (ready=" + formatTimestamp(readyTime) +
                               " - already passed)");
                         continue;
                     }
-                    
+
                     // Each flower bed counts as amount=1
                     FarmItem item = new FarmItem("flowers", name, 1, readyTime);
                     flowers.add(item);
-                    Log.d(TAG, "Added flower: 1 " + name + 
+                    Log.d(TAG, "Added flower: 1 " + name +
                           " (planted=" + formatTimestamp(plantedAt) + 
                           ", baseTime=" + (baseTime / 1000 / 60 / 60 / 24) + " days" +
                           ", ready=" + formatTimestamp(readyTime) + ")");
@@ -1385,46 +1392,45 @@ public class CategoryExtractors {
                         
                         if (honey.has("updatedAt") && flowers.size() > 0) {
                             long honeyUpdatedAt = honey.get("updatedAt").getAsLong();
-                            
-                            // Get the current flower's properties (last one in array is active)
-                            JsonObject currentFlower = flowers.get(flowers.size() - 1).getAsJsonObject();
-                            double flowerRate = currentFlower.has("rate") ? currentFlower.get("rate").getAsDouble() : 1.0;
-                            long flowerAttachedAt = currentFlower.has("attachedAt") ? currentFlower.get("attachedAt").getAsLong() : honeyUpdatedAt;
-                            long flowerAttachedUntil = currentFlower.has("attachedUntil") ? currentFlower.get("attachedUntil").getAsLong() : Long.MAX_VALUE;
-                            
-                            // Calculate how much honey has been produced since last update
-                            // Start time is the later of: honey last updated OR flower attached
-                            long productionStartTime = Math.max(honeyUpdatedAt, flowerAttachedAt);
-                            
-                            // End time is the earlier of: now OR when flower detaches
+                            double alreadyProduced = honey.has("produced") ? honey.get("produced").getAsDouble() : 0.0;
+
+                            // Find the attached flower bed id for this beehive (assume first flower in array has the id)
+                            JsonObject firstFlower = flowers.get(0).getAsJsonObject();
+                            String flowerBedId = firstFlower.has("id") ? firstFlower.get("id").getAsString() : null;
+                            Long finishTime = (flowerBedId != null) ? flowerBedFinishTimes.get(flowerBedId) : null;
+
+                            // Only produce honey if the finish time is in the future
+                            if (finishTime == null || finishTime <= currentTime) {
+                                Log.d(TAG, "Beehive " + displayNumber + " has no flower currently attached (by finishTime), skipping honey calculation.");
+                                continue;
+                            }
+
+                            // Use the first flower's rate for honey production
+                            double flowerRate = firstFlower.has("rate") ? firstFlower.get("rate").getAsDouble() : 1.0;
+                            long flowerAttachedUntil = finishTime;
+
+                            // Calculate honey produced since last update (from honey.updatedAt)
+                            long productionStartTime = honeyUpdatedAt;
                             long productionEndTime = Math.min(currentTime, flowerAttachedUntil);
-                            
-                            // Calculate honey produced in this period
                             long timeSinceStart = Math.max(0, productionEndTime - productionStartTime);
                             double honeyProducedNow = timeSinceStart * flowerRate;
-                            
-                            // Current honey = already produced + newly produced
-                            double alreadyProduced = honey.has("produced") ? honey.get("produced").getAsDouble() : 0.0;
+
                             double currentHoney = alreadyProduced + honeyProducedNow;
-                            
-                            // Calculate time to full: (86400000 - currentHoney) / rate
-                            // 86400000 ms = 24 hours (full capacity)
                             double remainingCapacity = 86400000.0 - currentHoney;
-                            
-                            // Only create alert if honey will eventually fill
+
                             if (remainingCapacity > 0) {
                                 long millisecondsToFull = Math.round(remainingCapacity / flowerRate);
                                 long fullnessTime = currentTime + millisecondsToFull;
-                                
-                                // Only include if fullness is in the future (and flower is still attached)
-                                if (fullnessTime > currentTime && productionEndTime < flowerAttachedUntil) {
+
+                                // Only include if fullness will occur BEFORE flower detaches
+                                if (fullnessTime > currentTime && fullnessTime < flowerAttachedUntil) {
                                     FarmItem fullItem = new FarmItem("Beehive Full", "Beehive " + displayNumber, 1, fullnessTime);
                                     fullItem.setBuildingName(uuid); // Store UUID for reference
                                     items.add(fullItem);
-                                    Log.d(TAG, "Added beehive fullness alert: Beehive " + displayNumber + " (uuid: " + uuid + ") full at " + formatTimestamp(fullnessTime) + 
-                                            " (current: " + String.format("%.0f", currentHoney) + "ml, rate: " + flowerRate + "ml/ms)");
+                                    Log.d(TAG, "Added beehive fullness alert: Beehive " + displayNumber + " (uuid: " + uuid + ") full at " + formatTimestamp(fullnessTime) +
+                                            " (current: " + String.format("%.0f", currentHoney) + "ml, rate: " + flowerRate + "ml/ms, flower detaches at: " + formatTimestamp(flowerAttachedUntil) + ")");
                                 } else {
-                                    Log.d(TAG, "Beehive " + displayNumber + " fullness already met or flower will detach first: fullAt=" + formatTimestamp(fullnessTime) + 
+                                    Log.d(TAG, "Beehive " + displayNumber + " won't fill before flower detaches: fullAt=" + formatTimestamp(fullnessTime) +
                                             " detachAt=" + formatTimestamp(flowerAttachedUntil));
                                 }
                             } else {

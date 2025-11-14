@@ -49,8 +49,19 @@ public class ClustererFactory {
                 return new CraftingBoxClusterer();
             
             case "beehive":
+            case "beehive swarm":
+            case "beehive full":
+            case "Beehive Swarm":
+            case "Beehive Full":
                 Log.d(TAG, "Using BeehiveClusterer for category: " + category);
-                return new BeehiveClusterer();
+                BeehiveClusterer beehiveClusterer = new BeehiveClusterer();
+                beehiveClusterer.setContext(context);
+                return beehiveClusterer;
+            
+            case "crop machine":
+            case "Crop Machine":
+                Log.d(TAG, "Using CropMachineClusterer for category: " + category);
+                return new CropMachineClusterer();
             
             case "cropMachine":
                 Log.d(TAG, "Using CropMachineClusterer for category: " + category);
@@ -61,12 +72,18 @@ public class ClustererFactory {
                 return new SunstoneClusterer();
             
             case "dailyReset":
+            case "Daily Reset":
                 Log.d(TAG, "Using DefaultClusterer for category: " + category);
                 return new DefaultClusterer();
             
             case "floating_island":
+            case "Floating Island":
                 Log.d(TAG, "Using FloatingIslandClusterer for category: " + category);
                 return new FloatingIslandClusterer();
+            
+            case "skill_cooldown":
+                Log.d(TAG, "Using SkillClusterer for category: " + category);
+                return new SkillClusterer();
             
             default:
                 Log.w(TAG, "Unknown category: " + category + ", using DefaultClusterer");

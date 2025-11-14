@@ -14,8 +14,8 @@ android {
         applicationId "com.sunflowerland.mobile"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 9
-        versionName "1.0.009"
+    versionCode 10
+    versionName "1.0.010"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -67,6 +67,8 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.10.1'
     // WorkManager for battery-efficient background scheduling
     implementation 'androidx.work:work-runtime:2.8.1'
+    // MetaMask Android SDK for wallet integration
+    implementation 'io.metamask.androidsdk:metamask-android-sdk:0.6.6'
 }
 
 apply from: 'capacitor.build.gradle'

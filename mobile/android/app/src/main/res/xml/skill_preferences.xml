@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    
+    <SwitchPreferenceCompat
+        android:key="category_skill_cooldown"
+        android:title="Enable Skill Cooldown Notifications"
+        android:summary="Get notified when your skills are ready"
+        android:defaultValue="true" />
+    
+    <SwitchPreferenceCompat android:key="skill_instant_growth" android:title="Instant Growth" android:defaultValue="true" />
+    <SwitchPreferenceCompat android:key="skill_tree_blitz" android:title="Tree Blitz" android:defaultValue="true" />
+    <SwitchPreferenceCompat android:key="skill_instant_gratification" android:title="Instant Gratification" android:defaultValue="true" />
+    <SwitchPreferenceCompat android:key="skill_barnyard_rouse" android:title="Barnyard Rouse" android:defaultValue="true" />
+    <SwitchPreferenceCompat android:key="skill_petal_blessed" android:title="Petal Blessed" android:defaultValue="true" />
+    <SwitchPreferenceCompat android:key="skill_greenhouse_guru" android:title="Greenhouse Guru" android:defaultValue="true" />
+    <SwitchPreferenceCompat android:key="skill_grease_lightning" android:title="Grease Lightning" android:defaultValue="true" />
+    
+</PreferenceScreen>
