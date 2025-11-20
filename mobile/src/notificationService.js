@@ -87,7 +87,7 @@ const RESOURCE_GROWTH_TIMES = {
   'gold': 24 * 60 * 60 * 1000, // 24 hours
   'crimstone': 24 * 60 * 60 * 1000, // 24 hours
   'sunstone': 3 * 24 * 60 * 60 * 1000, // 3 days (72 hours)
-  'oil': 24 * 60 * 60 * 1000, // 24 hours
+  'oil': 20 * 60 * 60 * 1000, // 20 hours
   'lava': 24 * 60 * 60 * 1000, // 24 hours
 };
 
