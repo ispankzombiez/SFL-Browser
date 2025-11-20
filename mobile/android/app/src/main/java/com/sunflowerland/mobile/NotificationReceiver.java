@@ -51,36 +51,109 @@ public class NotificationReceiver extends BroadcastReceiver {
         // Create notification channel (required for Android O and above)
         createNotificationChannel(context);
 
-        // Create intent to open the app when notification is clicked
-        Intent appIntent;
-        
-        // Check if "Only Notifications" mode is enabled
+        // Check if this is a notification click
+        if ("com.sunflowerland.mobile.ACTION_NOTIFICATION_CLICK".equals(intent.getAction())) {
+            android.content.SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+            boolean onlyNotificationsMode = prefs.getBoolean("only_notifications", false);
+            Intent appIntent;
+            if (onlyNotificationsMode) {
+                // Always use the package specified in 'app to open' if notifications only is true
+                String customPackage = prefs.getString("app_to_open", "");
+                Log.d("NotificationReceiver", "Attempting to open custom package: '" + customPackage + "'");
+                Intent launchIntent = null;
+                boolean triedCustom = false;
+                if (customPackage != null && !customPackage.trim().isEmpty()) {
+                    triedCustom = true;
+                    try {
+                        // Try standard launch intent
+                        launchIntent = context.getPackageManager().getLaunchIntentForPackage(customPackage);
+                        Log.d("NotificationReceiver", "getLaunchIntentForPackage result: " + (launchIntent != null ? launchIntent.toString() : "null"));
+                        if (launchIntent == null) {
+                            // Try explicit MAIN/LAUNCHER intent
+                            launchIntent = new Intent(Intent.ACTION_MAIN);
+                            launchIntent.setPackage(customPackage);
+                            launchIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+                            launchIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            int activitiesFound = context.getPackageManager().queryIntentActivities(launchIntent, 0).size();
+                            Log.d("NotificationReceiver", "queryIntentActivities found " + activitiesFound + " activities for package: '" + customPackage + "'");
+                            if (activitiesFound == 0) {
+                                // If still not found, try ACTION_VIEW with a URL (for browsers)
+                                Intent browserIntent = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://sunflower-land.com/play/#/"));
+                                browserIntent.setPackage(customPackage);
+                                browserIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                int browserActivities = context.getPackageManager().queryIntentActivities(browserIntent, 0).size();
+                                Log.d("NotificationReceiver", "ACTION_VIEW browser activities found: " + browserActivities);
+                                if (browserActivities > 0) {
+                                    launchIntent = browserIntent;
+                                } else {
+                                    Log.e("NotificationReceiver", "No launchable activity found for package: " + customPackage);
+                                    launchIntent = null;
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                        Log.e("NotificationReceiver", "Error getting launch intent for package: " + customPackage, e);
+                        launchIntent = null;
+                    }
+                }
+                if (launchIntent != null) {
+                    Log.i("NotificationReceiver", "Launching custom package: " + customPackage);
+                    appIntent = launchIntent;
+                } else {
+                    if (triedCustom) {
+                        Log.w("NotificationReceiver", "Could not launch custom package: " + customPackage + ". Falling back to MainActivity.");
+                        android.widget.Toast.makeText(context, "Could not open app: " + customPackage, android.widget.Toast.LENGTH_LONG).show();
+                    }
+                    // Fallback: open MainActivity (default behavior)
+                    appIntent = new Intent(context, MainActivity.class);
+                }
+            } else {
+                // Normal mode - open MainActivity
+                appIntent = new Intent(context, MainActivity.class);
+            }
+            appIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            context.startActivity(appIntent);
+            return;
+        }
+
+        // --- Normal notification delivery logic below ---
+        // Build notification - use system defaults for sound and vibration
         android.content.SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         boolean onlyNotificationsMode = prefs.getBoolean("only_notifications", false);
-        
+        PendingIntent contentIntent;
         if (onlyNotificationsMode) {
-            // If in notification-only mode, open SettingsActivity instead
-            appIntent = new Intent(context, SettingsActivity.class);
+            // Use broadcast for custom app logic
+            contentIntent = PendingIntent.getBroadcast(
+                context,
+                notificationId + 10000,
+                new Intent(context, NotificationReceiver.class)
+                    .setAction("com.sunflowerland.mobile.ACTION_NOTIFICATION_CLICK")
+                    .putExtra("notificationId", notificationId)
+                    .putExtra("title", title)
+                    .putExtra("body", body)
+                    .putExtra("itemName", itemName)
+                    .putExtra("category", category)
+                    .putExtra("groupId", groupId)
+                    .putExtra("details", details)
+                    .putExtra("count", count),
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+            );
         } else {
-            // Normal mode - open MainActivity
-            appIntent = new Intent(context, MainActivity.class);
+            // Directly open MainActivity
+            Intent mainIntent = new Intent(context, MainActivity.class);
+            mainIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            contentIntent = PendingIntent.getActivity(
+                context,
+                notificationId + 10000,
+                mainIntent,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+            );
         }
-        
-        appIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-
-        PendingIntent pendingIntent = PendingIntent.getActivity(
-            context,
-            notificationId,
-            appIntent,
-            PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
-        );
-        
-        // Build notification - use system defaults for sound and vibration
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(getSmallIconForDevice(context))
-                .setContentIntent(pendingIntent)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setAutoCancel(true);
+            .setSmallIcon(getSmallIconForDevice(context))
+            .setContentIntent(contentIntent)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true);
 
         if (isApiResponse) {
             // Use standard notification for API response

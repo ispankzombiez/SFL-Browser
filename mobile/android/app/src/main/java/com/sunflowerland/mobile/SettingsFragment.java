@@ -13,8 +13,123 @@ public class SettingsFragment extends PreferenceFragmentCompat {
     
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
-        // Load preferences first
+        // Load preferences from XML first
         setPreferencesFromResource(R.xml.preferences, rootKey);
+
+        // Debug/Dev: Diagnostics
+        Preference diagnosticsPref = findPreference("open_diagnostics");
+        if (diagnosticsPref != null) {
+            diagnosticsPref.setOnPreferenceClickListener(preference -> {
+                Intent intent = new Intent(requireContext(), DiagnosticsActivity.class);
+                startActivity(intent);
+                return true;
+            });
+        }
+
+        // Now wire up 'app to open' visibility and logic
+        Preference appToOpenPref = findPreference("app_to_open");
+        SwitchPreferenceCompat onlyNotificationsPref = findPreference("only_notifications");
+        if (appToOpenPref != null && onlyNotificationsPref != null) {
+            // Set default if blank or unset
+            SharedPreferences prefs = androidx.preference.PreferenceManager.getDefaultSharedPreferences(requireContext());
+            String currentPackage = prefs.getString("app_to_open", null);
+            if (currentPackage == null || currentPackage.trim().isEmpty()) {
+                prefs.edit().putString("app_to_open", requireContext().getPackageName()).apply();
+            }
+            // Hide by default unless notifications only is true
+            boolean notificationsOnly = onlyNotificationsPref.isChecked();
+            appToOpenPref.setVisible(notificationsOnly);
+            onlyNotificationsPref.setOnPreferenceChangeListener((preference, newValue) -> {
+                boolean enabled = Boolean.TRUE.equals(newValue);
+                appToOpenPref.setVisible(enabled);
+                return true;
+            });
+
+            // Show all launchable apps with icons in a custom dialog
+            appToOpenPref.setOnPreferenceClickListener(preference -> {
+                final android.content.pm.PackageManager pm = requireContext().getPackageManager();
+                final String[][] walletApps = new String[][] {
+                    {"Phantom", "app.phantom"},
+                    {"MetaMask", "io.metamask"},
+                    {"Ronin Wallet", "com.skymavis.genesis"},
+                    {"Rabby Wallet", "com.debank.rabbymobile"},
+                    {"Ledger Wallet", "com.ledger.live"},
+                    {"Coinbase", "com.coinbase.android"},
+                    {"OKX Wallet", "com.okx.wallet"},
+                    {"Trust Wallet", "com.wallet.crypto.trustapp"}
+                };
+                java.util.List<String> displayNames = new java.util.ArrayList<>();
+                java.util.List<String> packageNames = new java.util.ArrayList<>();
+                java.util.List<android.graphics.drawable.Drawable> icons = new java.util.ArrayList<>();
+                for (String[] wallet : walletApps) {
+                    String label = wallet[0];
+                    String pkg = wallet[1];
+                    try {
+                        Intent launchIntent = pm.getLaunchIntentForPackage(pkg);
+                        if (launchIntent != null) {
+                            displayNames.add(label);
+                            packageNames.add(pkg);
+                            try {
+                                icons.add(pm.getApplicationIcon(pkg));
+                            } catch (Exception e) {
+                                icons.add(null);
+                            }
+                        }
+                    } catch (Exception e) {
+                        // Not installed or not launchable, skip
+                    }
+                }
+                displayNames.add("Custom...");
+                icons.add(null);
+                android.widget.ListAdapter adapter = new android.widget.BaseAdapter() {
+                    @Override public int getCount() { return displayNames.size(); }
+                    @Override public Object getItem(int i) { return displayNames.get(i); }
+                    @Override public long getItemId(int i) { return i; }
+                    @Override public android.view.View getView(int i, android.view.View convertView, android.view.ViewGroup parent) {
+                        android.view.LayoutInflater inflater = android.view.LayoutInflater.from(requireContext());
+                        android.view.View view = inflater.inflate(android.R.layout.select_dialog_item, parent, false);
+                        android.widget.TextView text = view.findViewById(android.R.id.text1);
+                        text.setText(displayNames.get(i));
+                        android.graphics.drawable.Drawable icon = icons.get(i);
+                        if (icon != null) {
+                            int iconSize = (int) (text.getLineHeight() * 1.2f);
+                            icon.setBounds(0, 0, iconSize, iconSize);
+                            text.setCompoundDrawables(icon, null, null, null);
+                            text.setCompoundDrawablePadding(16);
+                        }
+                        return view;
+                    }
+                };
+                new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                        .setTitle("Select App to Open")
+                        .setAdapter(adapter, (dialog, which) -> {
+                            if (which < packageNames.size()) {
+                                String pkg = packageNames.get(which);
+                                String label = displayNames.get(which);
+                                prefs.edit().putString("app_to_open", pkg).apply();
+                                appToOpenPref.setSummary(label + " (" + pkg + ")");
+                            } else {
+                                // Custom option
+                                final android.widget.EditText input = new android.widget.EditText(requireContext());
+                                input.setHint("package.name or package/name");
+                                new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                                        .setTitle("Enter Package Name")
+                                        .setView(input)
+                                        .setPositiveButton("OK", (d, w) -> {
+                                            String value = input.getText().toString().trim();
+                                            if (!value.isEmpty()) {
+                                                prefs.edit().putString("app_to_open", value).apply();
+                                                appToOpenPref.setSummary("Custom: " + value);
+                                            }
+                                        })
+                                        .setNegativeButton("Cancel", null)
+                                        .show();
+                            }
+                        })
+                        .show();
+                return true;
+            });
+        }
 
         // Debug/Dev: View Notification Log
         Preference viewLogPref = findPreference("view_notification_log");
@@ -66,14 +181,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
             });
         }
 
-        // Handle "Only Notifications" mode toggle
-        SwitchPreferenceCompat onlyNotificationsPref = findPreference("only_notifications");
-        if (onlyNotificationsPref != null) {
-            onlyNotificationsPref.setOnPreferenceChangeListener((preference, newValue) -> {
-                // Toggle changed - no popup needed, the summary text explains what happens
-                return true;
-            });
-        }
+        // Handle "Only Notifications" mode toggle (already handled above for visibility logic)
 
         // Handle "Open Game (One Time)" button
         Preference openWebViewPref = findPreference("open_webview");
@@ -359,6 +467,22 @@ public class SettingsFragment extends PreferenceFragmentCompat {
         }
         
         // Category toggles are now SwitchPreferenceCompat and do not need click listeners
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Listen for orientation preference changes
+        androidx.preference.Preference orientationPref = findPreference("orientation");
+        if (orientationPref != null) {
+            orientationPref.setOnPreferenceChangeListener((preference, newValue) -> {
+                // Notify MainActivity to update orientation
+                if (getActivity() instanceof MainActivity) {
+                    ((MainActivity) getActivity()).applyOrientationSetting((String) newValue);
+                }
+                return true;
+            });
+        }
     }
 
     /**

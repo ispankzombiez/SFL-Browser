@@ -37,6 +37,32 @@ import androidx.core.view.WindowCompat;
 
 public class MainActivity extends BridgeActivity {
 
+    /**
+     * Applies the orientation setting from preferences or a given value.
+     * @param value The orientation value ("auto", "portrait", "landscape"). If null, reads from preferences.
+     */
+    public void applyOrientationSetting(String value) {
+        String orientationValue = value;
+        if (orientationValue == null) {
+            android.content.SharedPreferences prefs = androidx.preference.PreferenceManager.getDefaultSharedPreferences(this);
+            orientationValue = prefs.getString("orientation", "portrait");
+        }
+        int requestedOrientation;
+        switch (orientationValue) {
+            case "landscape":
+                requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
+                break;
+            case "portrait":
+                requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+                break;
+            case "auto":
+            default:
+                requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED;
+                break;
+        }
+        setRequestedOrientation(requestedOrientation);
+    }
+
     // Removed duplicate onCreate and onResume methods to resolve redefinition errors.
 
     private void hideSystemUIDelayed() {
@@ -78,7 +104,19 @@ public class MainActivity extends BridgeActivity {
     
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        // Initialize preferences once at the top
+        android.content.SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        // Show debug toast for exact alarm permission if enabled
+        boolean showDebugToast = prefs.getBoolean("show_debug_toast", false);
+        if (showDebugToast && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            android.app.AlarmManager alarmManager = (android.app.AlarmManager) getSystemService(ALARM_SERVICE);
+            boolean canExact = alarmManager != null && alarmManager.canScheduleExactAlarms();
+            android.widget.Toast.makeText(this, "Exact Alarms Permission: " + canExact, android.widget.Toast.LENGTH_LONG).show();
+        }
         super.onCreate(savedInstanceState);
+
+        // Apply orientation setting on startup
+        applyOrientationSetting(null);
         
         // Initialize debug log system
         DebugLog.init(this);
@@ -88,10 +126,8 @@ public class MainActivity extends BridgeActivity {
         Log.i("NOTIFICATION_DEBUG", "App Package: " + getPackageName());
         
         // Check if "Only Notifications" mode is enabled
-        android.content.SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         boolean onlyNotificationsMode = prefs.getBoolean("only_notifications", false);
         boolean bypassOnlyNotifications = getIntent().getBooleanExtra("bypass_notifications_only", false);
-        
         if (onlyNotificationsMode && !bypassOnlyNotifications) {
             Log.d("MainActivity", "Only Notifications mode enabled - redirecting to SettingsActivity");
             // Start SettingsActivity and finish MainActivity
@@ -111,6 +147,28 @@ public class MainActivity extends BridgeActivity {
                         NOTIFICATION_PERMISSION_REQUEST_CODE);
             } else {
                 Log.d("MainActivity", "POST_NOTIFICATIONS permission already granted");
+            }
+        }
+
+        // Prompt for exact alarm permission if needed (Android 12+)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            android.app.AlarmManager alarmManager = (android.app.AlarmManager) getSystemService(ALARM_SERVICE);
+            if (alarmManager != null && !alarmManager.canScheduleExactAlarms()) {
+                runOnUiThread(() -> {
+                    new androidx.appcompat.app.AlertDialog.Builder(this)
+                        .setTitle("Allow Exact Alarms")
+                        .setMessage("To ensure notifications are delivered on time, please allow this app to use exact alarms.")
+                        .setNegativeButton("Close", (dialog, which) -> dialog.dismiss())
+                        .setPositiveButton("Open", (dialog, which) -> {
+                            try {
+                                android.content.Intent intent = new android.content.Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM);
+                                startActivity(intent);
+                            } catch (Exception e) {
+                                android.widget.Toast.makeText(this, "Unable to open settings.", android.widget.Toast.LENGTH_SHORT).show();
+                            }
+                        })
+                        .show();
+                });
             }
         }
 

@@ -24,11 +24,23 @@
             android:key="default_wallet"
             android:title="Default Wallet"
             android:summary="Select your default wallet for the game" />
+        <ListPreference
+            android:key="orientation"
+            android:title="Screen Orientation"
+            android:summary="Choose how the game screen orients"
+            android:defaultValue="portrait"
+            android:entries="@array/orientation_entries"
+            android:entryValues="@array/orientation_values" />
         <SwitchPreferenceCompat
             android:key="only_notifications"
             android:title="Notifications Only"
             android:summary="When enabled, app opens to Settings instead of the game. Disables web browsing and keeps only the notification system."
             android:defaultValue="false" />
+        <Preference
+            android:key="app_to_open"
+            android:title="App to Open"
+            android:summary="Select the app to open when a notification is clicked."
+        />
         <Preference
             android:key="open_webview"
             android:title="Open Game (One Time)"
@@ -174,6 +186,15 @@
 
     <!-- Debug/Dev Section -->
     <PreferenceCategory android:title="Debug/Dev">
+                <Preference
+                    android:key="open_diagnostics"
+                    android:title="Diagnostics"
+                    android:summary="View device and app diagnostics for notification/alarm troubleshooting" />
+        <SwitchPreferenceCompat
+            android:key="show_debug_toast"
+            android:title="Show Debug Toast"
+            android:summary="Show debug toast messages for troubleshooting (default: off)"
+            android:defaultValue="false" />
         <Preference
             android:key="notification_testing"
             android:title="Notification Testing"

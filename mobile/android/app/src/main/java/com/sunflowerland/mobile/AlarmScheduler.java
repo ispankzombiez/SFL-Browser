@@ -158,12 +158,30 @@ public class AlarmScheduler {
             
             // Create PendingIntent with FLAG_IMMUTABLE for security
             // Use FLAG_UPDATE_CURRENT to replace any existing alarm for this ID
-            PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                PendingIntent pendingIntent = PendingIntent.getBroadcast(
                     context,
                     notificationId,
                     intent,
                     PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
-            );
+                );
+
+                // Create a broadcast PendingIntent for notification click
+                Intent clickIntent = new Intent(context, NotificationReceiver.class);
+                clickIntent.setAction("com.sunflowerland.mobile.ACTION_NOTIFICATION_CLICK");
+                clickIntent.putExtra("notificationId", notificationId);
+                clickIntent.putExtra("title", intent.getStringExtra("title"));
+                clickIntent.putExtra("body", intent.getStringExtra("body"));
+                clickIntent.putExtra("itemName", intent.getStringExtra("itemName"));
+                clickIntent.putExtra("category", intent.getStringExtra("category"));
+                clickIntent.putExtra("groupId", intent.getStringExtra("groupId"));
+                clickIntent.putExtra("details", intent.getStringExtra("details"));
+                clickIntent.putExtra("count", intent.getIntExtra("count", 1));
+                PendingIntent clickPendingIntent = PendingIntent.getBroadcast(
+                    context,
+                    notificationId + 10000, // ensure unique requestCode for click
+                    clickIntent,
+                    PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+                );
             
             Log.d(TAG, "PendingIntent created: " + (pendingIntent != null ? "SUCCESS" : "FAILED"));
             

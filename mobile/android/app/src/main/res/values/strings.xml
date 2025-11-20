@@ -1,7 +1,15 @@
-<?xml version='1.0' encoding='utf-8'?>
 <resources>
+    <string name="pref_app_to_open_title">App to Open</string>
+    <string name="pref_app_to_open_summary">Enter the package name of the app to open when a notification is clicked (e.g. com.example.app)</string>
+    <string name="pref_app_to_open_dialog_title">App to Open</string>
+    <string name="pref_app_to_open_invalid">Invalid or missing package name. Defaulting to Sunflower Land app.</string>
     <string name="app_name">Sunflower Land</string>
     <string name="title_activity_main">Sunflower Land</string>
     <string name="package_name">com.sunflowerland.mobile</string>
     <string name="custom_url_scheme">com.sunflowerland.mobile</string>
+    <string name="pref_orientation_title">Screen Orientation</string>
+    <string name="pref_orientation_summary">Choose how the game screen orients</string>
+    <string name="pref_orientation_auto">Auto</string>
+    <string name="pref_orientation_portrait">Portrait</string>
+    <string name="pref_orientation_landscape">Landscape</string>
 </resources>
