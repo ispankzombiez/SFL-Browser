@@ -553,7 +553,7 @@ public class FarmDataProcessor {
      */
     private static String formatTimeForNotification(long timestamp) {
         try {
-            SimpleDateFormat sdf = new SimpleDateFormat("h:mm a", Locale.US);
+            SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss", Locale.US);
             return sdf.format(new Date(timestamp));
         } catch (Exception e) {
             return "Unknown";
