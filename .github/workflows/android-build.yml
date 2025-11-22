@@ -19,6 +19,9 @@ jobs:
         distribution: temurin
         java-version: '17'
 
+    - name: Grant execute permission to gradlew
+      run: chmod +x mobile/android/gradlew
+
 
     - name: Add platform-tools to PATH
       env:
