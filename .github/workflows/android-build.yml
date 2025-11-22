@@ -29,6 +29,11 @@ jobs:
         cd mobile
         npm ci
 
+    - name: Copy prebuilt web assets to mobile/www
+      run: |
+        rm -rf mobile/www
+        cp -r www mobile/www
+
     - name: Sync Capacitor
       run: |
         cd mobile
