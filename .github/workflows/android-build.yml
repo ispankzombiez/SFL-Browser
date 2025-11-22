@@ -23,15 +23,16 @@ jobs:
       run: chmod +x mobile/android/gradlew
 
 
-    - name: Add platform-tools to PATH
-      env:
-        ANDROID_SDK_ROOT: ${{ runner.temp }}/android-sdk
-      run: echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
 
-    - name: Show Java and Gradle versions
+    - name: Install npm dependencies
       run: |
-        java -version
-        ./mobile/android/gradlew -v
+        cd mobile
+        npm ci
+
+    - name: Sync Capacitor
+      run: |
+        cd mobile
+        npx cap sync android
 
     - name: Build debug APK
       working-directory: ./mobile/android
