@@ -64,3 +64,6 @@ old_periodic_check.txt
 
 # Generated/downloaded assets
 game-assets-download/
+
+# Allow www build output to be tracked for Android builds
+!www/

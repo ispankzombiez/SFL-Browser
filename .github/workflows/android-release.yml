@@ -44,10 +44,10 @@ jobs:
           node-version: '18'
 
       # The following steps are not needed if www is committed
-      # - name: Install npm dependencies
-      #   run: |
-      #     cd mobile
-      #     npm ci
+      - name: Install npm dependencies
+        run: |
+          cd mobile
+          npm ci
 
       # - name: Build web assets
       #   run: |

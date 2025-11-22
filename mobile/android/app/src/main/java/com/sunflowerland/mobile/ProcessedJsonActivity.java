@@ -19,7 +19,7 @@ public class ProcessedJsonActivity extends AppCompatActivity {
         textView.setPadding(16, 96, 16, 16);
         textView.setTextSize(12);
         
-        String logContent = readLogFile("future_notifications.json");
+        String logContent = readLogFile("processed.json");
         textView.setText(logContent);
         
         scrollView.addView(textView);

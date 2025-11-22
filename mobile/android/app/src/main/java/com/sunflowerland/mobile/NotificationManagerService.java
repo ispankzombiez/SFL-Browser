@@ -40,6 +40,21 @@ import java.util.Locale;
 
 
 public class NotificationManagerService extends Service {
+        /**
+         * Appends a message to the processing log file (processing_log.txt)
+         */
+        private void appendToProcessingLog(String message) {
+            try {
+                File file = new File(getFilesDir(), "processing_log.txt");
+                try (BufferedWriter writer = new BufferedWriter(new FileWriter(file, true))) {
+                    String timestamp = getCurrentTimestamp();
+                    writer.write("[" + timestamp + "] " + message + "\n");
+                }
+            } catch (IOException e) {
+                // Fallback: print to logcat if file write fails
+                Log.e(TAG, "Error appending to processing log: " + e.getMessage(), e);
+            }
+        }
     private static final String TAG = "NotificationManagerService";
     private static final String CHANNEL_ID_ITEMS = "farm_items";
     private static final String API_BASE_URL = "https://api.sunflower-land.com/community/farms/";
@@ -54,7 +69,7 @@ public class NotificationManagerService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         try {
-            Log.d(TAG, "Service started - onStartCommand called");
+            appendToProcessingLog("Service started - onStartCommand called");
             
             // Check if this is a WorkManager-triggered call to process farm data
             if (intent != null && intent.getAction() != null && 
@@ -130,7 +145,7 @@ public class NotificationManagerService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        Log.d(TAG, "Service destroyed");
+        appendToProcessingLog("Service destroyed");
         isRunning = false;
     }
 
@@ -437,6 +452,31 @@ public class NotificationManagerService extends Service {
      * Writes processing log with summary of extracted items
      */
     private void writeProcessingLog(List<FarmItem> crops, List<FarmItem> fruits, List<FarmItem> greenhouseCrops, List<FarmItem> resources, List<FarmItem> animals, List<FarmItem> cooking, List<FarmItem> composters, List<FarmItem> flowers, List<FarmItem> craftingBox, List<FarmItem> beehives, List<FarmItem> cropMachine, List<FarmItem> sunstones, List<FarmItem> dailyReset, List<FarmItem> floatingIsland) {
+                        // Log extraction and processing of Crimstone and Oil
+                        int crimstoneCount = 0;
+                        int oilCount = 0;
+                        StringBuilder crimstoneLog = new StringBuilder();
+                        StringBuilder oilLog = new StringBuilder();
+                        for (FarmItem resource : resources) {
+                            String name = resource.getName() != null ? resource.getName().toLowerCase() : "";
+                            if (name.contains("crimstone")) {
+                                crimstoneCount++;
+                                crimstoneLog.append("Crimstone: amount=").append(resource.getAmount())
+                                    .append(", readyAt=").append(CategoryExtractors.formatTimestamp(resource.getTimestamp()))
+                                    .append(", rawTimestamp=").append(resource.getTimestamp())
+                                    .append("\n");
+                            } else if (name.contains("oil")) {
+                                oilCount++;
+                                oilLog.append("Oil: amount=").append(resource.getAmount())
+                                    .append(", readyAt=").append(CategoryExtractors.formatTimestamp(resource.getTimestamp()))
+                                    .append(", rawTimestamp=").append(resource.getTimestamp())
+                                    .append("\n");
+                            }
+                        }
+                        appendToProcessingLog("[Extraction] Crimstone nodes found: " + crimstoneCount);
+                        if (crimstoneCount > 0) appendToProcessingLog(crimstoneLog.toString());
+                        appendToProcessingLog("[Extraction] Oil nodes found: " + oilCount);
+                        if (oilCount > 0) appendToProcessingLog(oilLog.toString());
         try {
             File file = new File(getFilesDir(), "processing_log.txt");
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(file, false))) {
@@ -445,6 +485,7 @@ public class NotificationManagerService extends Service {
                 writer.write("=== Processing Log ===\n");
                 writer.write("Processed at: " + timestamp + "\n");
                 writer.write("---\n\n");
+                appendToProcessingLog("Processing log reset and new summary written");
 
                 // Write crops summary
                 if (crops.isEmpty()) {

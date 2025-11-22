@@ -1,4 +1,5 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 
 // Growth times in milliseconds for each crop type
 const CROP_GROWTH_TIMES = {
@@ -474,13 +475,13 @@ class NotificationService {
       });
     }
 
-    // Crimstones
+    // Crimstones (only add if ready time is in the future)
     if (farm.crimstones) {
       Object.entries(farm.crimstones).forEach(([key, crimstone]) => {
-        if (crimstone.crimstone && crimstone.crimstone.minedAt) {
-          const readyAt = crimstone.crimstone.minedAt + RESOURCE_GROWTH_TIMES.crimstone;
+        if (crimstone.stone && crimstone.stone.minedAt) {
+          const readyAt = crimstone.stone.minedAt + RESOURCE_GROWTH_TIMES.crimstone;
           const timeUntilReady = readyAt - now;
-          if (timeUntilReady > 0 && timeUntilReady <= NOTIFICATION_ADVANCE_TIME) {
+          if (timeUntilReady > 0) {
             readyItems.push({
               type: 'resource',
               name: 'Crimstone ready to mine',
@@ -493,13 +494,13 @@ class NotificationService {
       });
     }
 
-    // Oil Reserves
-    if (farm.oil) {
-      Object.entries(farm.oil).forEach(([key, oilNode]) => {
-        if (oilNode.oil && oilNode.oil.minedAt) {
-          const readyAt = oilNode.oil.minedAt + RESOURCE_GROWTH_TIMES.oil;
+    // Oil Reserves (only add if ready time is in the future)
+    if (farm.oilReserves) {
+      Object.entries(farm.oilReserves).forEach(([key, oilNode]) => {
+        if (oilNode.oil && oilNode.oil.drilledAt) {
+          const readyAt = oilNode.oil.drilledAt + RESOURCE_GROWTH_TIMES.oil;
           const timeUntilReady = readyAt - now;
-          if (timeUntilReady > 0 && timeUntilReady <= NOTIFICATION_ADVANCE_TIME) {
+          if (timeUntilReady > 0) {
             readyItems.push({
               type: 'resource',
               name: 'Oil ready to drill',
@@ -563,6 +564,19 @@ class NotificationService {
       }
 
       const readyItems = this.extractReadyItems(farmData);
+
+      // Write readyItems to processed.json for debugging/viewing in settings
+      try {
+        await Filesystem.writeFile({
+          path: 'processed.json',
+          data: JSON.stringify(readyItems, null, 2),
+          directory: Directory.Data,
+          encoding: Encoding.UTF8,
+        });
+        console.log('✅ processed.json updated with readyItems');
+      } catch (err) {
+        console.error('❌ Failed to write processed.json:', err);
+      }
       
       console.log(`📊 Ready items check complete: ${readyItems.length} items found`);
       
