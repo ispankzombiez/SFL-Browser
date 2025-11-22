@@ -72,11 +72,10 @@ jobs:
 
 
 
-      - name: Get version name from Gradle
+      - name: Get version name from build.gradle
         id: version
         run: |
-          cd mobile/android
-          VERSION_NAME=$(./gradlew -q printVersionName | tail -n 1)
+          VERSION_NAME=$(grep versionName mobile/android/app/build.gradle | head -1 | sed 's/.*versionName[[:space:]]*"\([^"]*\)".*/\1/')
           echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
 
 
