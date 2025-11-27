@@ -224,6 +224,19 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         // Initialize preferences once at the top
         prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        
+        // Check if "Only Notifications" mode is enabled - redirect before any UI is loaded
+        boolean onlyNotificationsMode = prefs.getBoolean("only_notifications", true);
+        boolean bypassOnlyNotifications = getIntent().getBooleanExtra("bypass_notifications_only", false);
+        if (onlyNotificationsMode && !bypassOnlyNotifications) {
+            Log.d("MainActivity", "Only Notifications mode enabled - redirecting to SettingsActivity");
+            // Start SettingsActivity and finish MainActivity
+            Intent settingsIntent = new Intent(this, SettingsActivity.class);
+            startActivity(settingsIntent);
+            finish();
+            return;
+        }
+        
         // Show debug toast for exact alarm permission if enabled
         boolean showDebugToast = prefs.getBoolean("show_debug_toast", false);
         if (showDebugToast && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
@@ -385,31 +398,6 @@ public class MainActivity extends BridgeActivity {
         Log.i("NOTIFICATION_DEBUG", "=== Sunflower Land App Starting ===");
         Log.i("NOTIFICATION_DEBUG", "Process ID: " + android.os.Process.myPid());
         Log.i("NOTIFICATION_DEBUG", "App Package: " + getPackageName());
-        
-        // Check if "Only Notifications" mode is enabled
-        boolean onlyNotificationsMode = prefs.getBoolean("only_notifications", false);
-        boolean bypassOnlyNotifications = getIntent().getBooleanExtra("bypass_notifications_only", false);
-        if (onlyNotificationsMode && !bypassOnlyNotifications) {
-            Log.d("MainActivity", "Only Notifications mode enabled - redirecting to SettingsActivity");
-            // Start SettingsActivity and finish MainActivity
-            Intent settingsIntent = new Intent(this, SettingsActivity.class);
-            startActivity(settingsIntent);
-            finish();
-            return;
-        }
-
-        // Request notification permission on Android 13+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-                    != PackageManager.PERMISSION_GRANTED) {
-                Log.d("MainActivity", "Requesting POST_NOTIFICATIONS permission");
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.POST_NOTIFICATIONS},
-                        NOTIFICATION_PERMISSION_REQUEST_CODE);
-            } else {
-                Log.d("MainActivity", "POST_NOTIFICATIONS permission already granted");
-            }
-        }
 
         // Prompt for exact alarm permission if needed (Android 12+)
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {

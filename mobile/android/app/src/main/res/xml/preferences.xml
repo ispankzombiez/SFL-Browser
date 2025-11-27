@@ -35,7 +35,7 @@
             android:key="only_notifications"
             android:title="Notifications Only"
             android:summary="When enabled, app opens to Settings instead of the game. Disables web browsing and keeps only the notification system."
-            android:defaultValue="false" />
+            android:defaultValue="true" />
         <SwitchPreferenceCompat
             android:key="no_browser_controls"
             android:title="No Browser Controls"
@@ -242,6 +242,10 @@
 
     <!-- About Section -->
     <PreferenceCategory android:title="About">
+        <Preference
+            android:key="tutorial_button"
+            android:title="Tutorial"
+            android:summary="View the app tutorial guide" />
         <Preference
             android:key="info_button"
             android:title="Info"

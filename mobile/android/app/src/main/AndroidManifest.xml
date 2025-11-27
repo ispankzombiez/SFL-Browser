@@ -231,6 +231,11 @@
             android:theme="@style/AppTheme.NoActionBar"
             android:exported="false" />
         <activity
+            android:name=".TutorialActivity"
+            android:label="Tutorial"
+            android:theme="@style/AppTheme.NoActionBar"
+            android:exported="false" />
+        <activity
             android:name=".InfoActivity"
             android:label="Info"
             android:theme="@style/AppTheme.NoActionBar"

@@ -136,6 +136,26 @@ public class SettingsFragment extends PreferenceFragmentCompat {
             onlyNotificationsPref.setOnPreferenceChangeListener((preference, newValue) -> {
                 boolean enabled = Boolean.TRUE.equals(newValue);
                 appToOpenPref.setVisible(enabled);
+                
+                // Show disclaimer dialog only once when toggled OFF (from ON to OFF)
+                if (!enabled && notificationsOnly) {
+                    SharedPreferences prefsInner = androidx.preference.PreferenceManager.getDefaultSharedPreferences(requireContext());
+                    boolean hasShownDisclaimerOnce = prefsInner.getBoolean("has_shown_notifications_only_disclaimer", false);
+                    
+                    if (!hasShownDisclaimerOnce) {
+                        String disclaimerMessage = "This is an unofficial third-party app and is not affiliated with, endorsed by, or connected to Sunflower Land or its development team.";
+                        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                            .setTitle("Disclaimer")
+                            .setMessage(disclaimerMessage)
+                            .setPositiveButton("Confirm", (dialog, which) -> {
+                                prefsInner.edit().putBoolean("has_shown_notifications_only_disclaimer", true).apply();
+                                dialog.dismiss();
+                            })
+                            .setCancelable(false)
+                            .show();
+                    }
+                }
+                
                 return true;
             });
 
@@ -546,6 +566,16 @@ public class SettingsFragment extends PreferenceFragmentCompat {
                         requireActivity().recreate();
                     })
                     .show();
+                return true;
+            });
+        }
+        
+        // Tutorial button
+        Preference tutorialPref = findPreference("tutorial_button");
+        if (tutorialPref != null) {
+            tutorialPref.setOnPreferenceClickListener(preference -> {
+                Intent intent = new Intent(getActivity(), TutorialActivity.class);
+                startActivity(intent);
                 return true;
             });
         }
