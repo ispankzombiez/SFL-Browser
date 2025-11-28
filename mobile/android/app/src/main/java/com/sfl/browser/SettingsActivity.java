@@ -1,20 +1,17 @@
 package com.sfl.browser;
 
-import android.os.Bundle;
 import android.os.Build;
+import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.core.content.ContextCompat;
-import androidx.core.app.ActivityCompat;
-import android.content.pm.PackageManager;
-import android.Manifest;
-import android.util.Log;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
+import android.Manifest;
 
 public class SettingsActivity extends AppCompatActivity {
-    private static final int NOTIFICATION_PERMISSION_REQUEST_CODE = 100;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,28 +35,21 @@ public class SettingsActivity extends AppCompatActivity {
             getSupportActionBar().setTitle("Notification Settings");
         }
         
-        // Request notification permission on Android 13+
+        // Request notification permission if needed
+        requestNotificationPermissionIfNeeded();
+        
+        // Show tutorial prompt if needed
+        showTutorialPromptIfNeeded();
+    }
+    
+    private void requestNotificationPermissionIfNeeded() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
                     != PackageManager.PERMISSION_GRANTED) {
-                Log.d("SettingsActivity", "Requesting POST_NOTIFICATIONS permission");
-                ActivityCompat.requestPermissions(this,
+                androidx.core.app.ActivityCompat.requestPermissions(this,
                         new String[]{Manifest.permission.POST_NOTIFICATIONS},
-                        NOTIFICATION_PERMISSION_REQUEST_CODE);
-            } else {
-                Log.d("SettingsActivity", "POST_NOTIFICATIONS permission already granted");
-                showTutorialPromptIfNeeded();
+                        102);
             }
-        } else {
-            showTutorialPromptIfNeeded();
-        }
-    }
-    
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == NOTIFICATION_PERMISSION_REQUEST_CODE) {
-            showTutorialPromptIfNeeded();
         }
     }
     

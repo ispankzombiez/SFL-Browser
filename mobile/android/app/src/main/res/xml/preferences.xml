@@ -39,7 +39,12 @@
         <SwitchPreferenceCompat
             android:key="no_browser_controls"
             android:title="No Browser Controls"
-            android:summary="Hide browser navigation controls (default: ON). When ON, only the game is shown. When OFF, browser controls are visible."
+            android:summary="Hide browser navigation controls (default: OFF). When ON, only the game is shown. When OFF, browser controls are visible."
+            android:defaultValue="false" />
+        <SwitchPreferenceCompat
+            android:key="android_buttons"
+            android:title="Android Buttons"
+            android:summary="Show Android navigation bar at bottom of screen (default: ON). When ON, system buttons are visible. When OFF, buttons are hidden."
             android:defaultValue="true" />
         <EditTextPreference
             android:key="home_page"

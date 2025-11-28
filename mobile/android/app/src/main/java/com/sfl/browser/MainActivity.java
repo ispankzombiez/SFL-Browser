@@ -20,6 +20,7 @@ import java.util.Collections;
 
 import android.os.Message;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.webkit.WebResourceResponse;
 import java.io.ByteArrayInputStream;
 import android.os.Handler;
@@ -198,7 +199,7 @@ public class MainActivity extends BridgeActivity {
     private static final int AUDIO_PERMISSION_REQUEST_CODE = 101;
     
     private android.widget.LinearLayout browserControlsBar;
-    private android.widget.ImageButton btnBack, btnForward, btnReload;
+    private android.widget.ImageButton btnBack, btnForward;
     private android.widget.EditText urlBar;
     private android.content.SharedPreferences prefs;
     private android.content.SharedPreferences.OnSharedPreferenceChangeListener prefListener;
@@ -259,16 +260,46 @@ public class MainActivity extends BridgeActivity {
             getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN);
         } catch (Exception ignore) { }
         mainWebView = findViewById(R.id.main_webview);
+        
+        // tabWebViews[0] will be set to the bridge WebView in setupJavaScriptInterface()
+        // tabWebViews[1] and [2] will be created on-demand in createTabWebView()
+        
         browserControlsBar = findViewById(R.id.browser_controls_bar);
         btnBack = findViewById(R.id.btn_back);
         btnForward = findViewById(R.id.btn_forward);
-        btnReload = findViewById(R.id.btn_reload);
         urlBar = findViewById(R.id.url_bar);
+        
+        android.widget.Button btnTabSwitcher = findViewById(R.id.btn_tab_switcher);
+        android.widget.ImageButton btnMenu = findViewById(R.id.btn_menu);
 
         // Wire browser control buttons
         btnBack.setOnClickListener(v -> { if (mainWebView != null && mainWebView.canGoBack()) mainWebView.goBack(); });
         btnForward.setOnClickListener(v -> { if (mainWebView != null && mainWebView.canGoForward()) mainWebView.goForward(); });
-        btnReload.setOnClickListener(v -> { if (mainWebView != null) mainWebView.reload(); });
+        
+        // Tab switcher button - show tab overview
+        btnTabSwitcher.setOnClickListener(v -> {
+            showTabOverview();
+        });
+        
+        // Menu button (3-dot)
+        btnMenu.setOnClickListener(v -> {
+            android.widget.PopupMenu popup = new android.widget.PopupMenu(MainActivity.this, v);
+            popup.getMenu().add(0, 1, 0, "Refresh");
+            popup.getMenu().add(0, 2, 1, "Settings");
+            popup.setOnMenuItemClickListener(item -> {
+                if (item.getItemId() == 1) {
+                    // Call the dedicated refresh method that handles both bridge and regular WebViews
+                    refreshCurrentTab();
+                    return true;
+                } else if (item.getItemId() == 2) {
+                    Intent settingsIntent = new Intent(MainActivity.this, SettingsActivity.class);
+                    startActivity(settingsIntent);
+                    return true;
+                }
+                return false;
+            });
+            popup.show();
+        });
 
         // URL bar behavior
         urlBar.setOnFocusChangeListener((v, hasFocus) -> {
@@ -336,13 +367,15 @@ public class MainActivity extends BridgeActivity {
             } else if ("no_browser_controls".equals(key)) {
                 boolean hide = sharedPreferences.getBoolean("no_browser_controls", false);
                 if (browserControlsBar != null) browserControlsBar.setVisibility(hide ? View.GONE : View.VISIBLE);
-                // Hide/show system navigation according to preference
-                setSystemNavHidden(hide);
+            } else if ("android_buttons".equals(key)) {
+                boolean show = sharedPreferences.getBoolean("android_buttons", true);
+                // Show or hide system navigation bar based on toggle
+                setSystemNavHidden(!show);
             }
         };
         prefs.registerOnSharedPreferenceChangeListener(prefListener);
 
-        // Load home page from settings (use centralized loader)
+        // Load home page from settings (use centralized loader) - THIS IS TAB 1, THE ACTIVE TAB
         if (mainWebView != null) {
             loadTabUrl(currentTab, true);
             try {
@@ -355,6 +388,31 @@ public class MainActivity extends BridgeActivity {
                 // Prefer WebView to have focus so navigation events can update the UI
                 mainWebView.requestFocus(android.view.View.FOCUS_DOWN);
             } catch (Exception ignore) { }
+        }
+
+        // Pre-create and load tabs 2 and 3 in the background (in parallel) to ensure they persist and are ready
+        // Don't block tab 1 loading
+        for (int bgTab = 2; bgTab <= MAX_TABS; bgTab++) {
+            final int tabNum = bgTab;
+            new Thread(() -> {
+                try {
+                    Thread.sleep(200); // Small delay to let tab 1 settle
+                    try {
+                        if (tabWebViews[tabNum - 1] == null) {
+                            tabWebViews[tabNum - 1] = createTabWebView(tabNum);
+                            String url = getHomeUrlForTab(tabNum);
+                            if (url != null && !url.isEmpty()) {
+                                tabWebViews[tabNum - 1].loadUrl(url);
+                                Log.d("MainActivity", "Background: Pre-loaded tab " + tabNum + " with URL: " + url);
+                            }
+                        }
+                    } catch (Exception e) {
+                        Log.w("MainActivity", "Error pre-loading tab " + tabNum, e);
+                    }
+                } catch (Exception e) {
+                    Log.w("MainActivity", "Error in tab " + tabNum + " pre-load thread", e);
+                }
+            }).start();
         }
 
         // Ensure WebView content appears above the system navigation bar (soft keys)
@@ -490,10 +548,10 @@ public class MainActivity extends BridgeActivity {
             Log.w("MainActivity", "WindowInsets handler not applied", e);
         }
 
-        // Respect the initial `no_browser_controls` preference by hiding system nav if enabled
+        // Respect the initial `android_buttons` preference to show/hide system nav
         try {
-            boolean initialHide = prefs.getBoolean("no_browser_controls", false);
-            setSystemNavHidden(initialHide);
+            boolean showButtons = prefs.getBoolean("android_buttons", true);
+            setSystemNavHidden(!showButtons);
         } catch (Exception ignored) { }
 
         handleIntent(getIntent());
@@ -504,20 +562,6 @@ public class MainActivity extends BridgeActivity {
         // Auto-start notification manager immediately (it runs in separate process, won't interfere)
         autoStartNotificationManager();
         
-        // OPTIMIZATION: Defer UI dialogs and heavy JavaScript injection to run AFTER WebView loads
-        // This prevents blocking the browser from loading
-        this.getWindow().getDecorView().post(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    // Show first-launch dialog after UI is ready (only shows on first launch due to flag)
-                    showFirstLaunchDialog();
-                } catch (Exception e) {
-                    Log.e("MainActivity", "Error in deferred initialization: " + e.getMessage(), e);
-                }
-            }
-        });
-        
         gestureDetector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
             @Override
             public boolean onDown(MotionEvent e) {
@@ -525,6 +569,42 @@ public class MainActivity extends BridgeActivity {
             }
         });
 
+    }
+
+    /**
+     * Override dispatchTouchEvent to intercept 3-finger touches and prevent system gesture interception.
+     * This ensures 3-finger swipes are handled by our gesture handler and not intercepted by Android's
+     * system gestures (like split-screen or gesture navigation).
+     */
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent event) {
+        try {
+            // If this is a 3-finger touch, block ALL event propagation to system handlers
+            if (event.getPointerCount() >= 3) {
+                int action = event.getActionMasked();
+                if (action == MotionEvent.ACTION_DOWN || 
+                    action == MotionEvent.ACTION_POINTER_DOWN || 
+                    action == MotionEvent.ACTION_MOVE ||
+                    action == MotionEvent.ACTION_UP ||
+                    action == MotionEvent.ACTION_POINTER_UP ||
+                    action == MotionEvent.ACTION_CANCEL) {
+                    
+                    // Log for debugging
+                    if (action == MotionEvent.ACTION_MOVE) {
+                        Log.d("MainActivity", "3-finger MOVE at (" + event.getX() + "," + event.getY() + ")");
+                    }
+                    
+                    // Send to WebView first, consume result
+                    boolean handledByWebView = super.dispatchTouchEvent(event);
+                    
+                    // Consume the event to prevent system gesture handling
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            Log.w("MainActivity", "Error in dispatchTouchEvent", e);
+        }
+        return super.dispatchTouchEvent(event);
     }
 
     private String getHomeUrlForTab(int tab) {
@@ -570,61 +650,105 @@ public class MainActivity extends BridgeActivity {
                 Log.d("MainActivity", "loadTabUrl(tab=" + tab + ") -> " + url + " (lastProgrammaticUrl=" + lastProgrammaticUrl + ") forceReload=" + forceReload);
                 Log.d("MainActivity", "Stored prefs: home_page=" + p1 + ", home_page_2=" + p2 + ", home_page_3=" + p3);
 
-                // If we have a parent container and cached tab WebViews, swap in the requested tab's WebView
-                try {
-                    WebView desired = null;
-                    try { desired = tabWebViews[tab - 1]; } catch (Exception ignored) { desired = null; }
-
-                    if (webviewParent != null) {
-                        if (desired == null) {
-                            // Lazily create + configure the WebView for this tab
-                            desired = createTabWebView(tab);
-                            tabWebViews[tab - 1] = desired;
-                            try { desired.loadUrl(url); } catch (Exception ignore) { }
-                        } else {
-                            // If forceReload is true, attempt to load the configured URL; otherwise preserve existing tab state
+                // Special handling for tab 1 (the Capacitor bridge WebView)
+                // NEVER swap it out - it stays in the container always
+                if (tab == 1) {
+                    try {
+                        if (tabWebViews[0] == null && mainWebView != null) {
+                            tabWebViews[0] = mainWebView;
+                        }
+                        
+                        if (tabWebViews[0] != null) {
+                            // Tab 1 is always visible - just update its content if needed
                             if (forceReload) {
                                 try {
                                     String cur = null;
-                                    try { cur = desired.getUrl(); } catch (Exception ignore) { cur = null; }
+                                    try { cur = tabWebViews[0].getUrl(); } catch (Exception ignore) { cur = null; }
                                     if (cur == null || !cur.equals(url)) {
-                                        try { desired.loadUrl(url); } catch (Exception ignore) { }
+                                        Log.d("MainActivity", "Loading tab 1 URL: " + url);
+                                        try { tabWebViews[0].loadUrl(url); } catch (Exception ignore) { }
                                     }
                                 } catch (Exception ignore) { }
                             }
+                            mainWebView = tabWebViews[0]; // Ensure mainWebView is always pointing to tab 1
                         }
-
-                        // Swap into parent if not already visible
-                        if (desired != mainWebView) {
-                            try {
-                                if (mainWebView != null && mainWebView.getParent() == webviewParent) {
-                                    webviewParent.removeView(mainWebView);
-                                }
-                                if (desired.getParent() instanceof android.view.ViewGroup) {
-                                    ((android.view.ViewGroup) desired.getParent()).removeView(desired);
-                                }
-                                webviewParent.addView(desired, webviewIndexInParent);
-                                mainWebView = desired;
-                            } catch (Exception e) {
-                                Log.w("MainActivity", "Failed to swap WebView for tab " + tab, e);
-                            }
-                        }
-
-                        lastProgrammaticUrl = url;
-                    } else {
-                        // No swap container available — fall back to single-WebView behavior
-                        if (mainWebView != null) {
-                            try { mainWebView.stopLoading(); } catch (Exception ignore) { }
-                            try {
-                                lastProgrammaticUrl = url;
-                                mainWebView.loadUrl(url);
-                            } catch (Exception e) {
-                                Log.w("MainActivity", "Failed to load URL for tab " + tab + ": " + url, e);
-                            }
-                        }
+                    } catch (Exception e) {
+                        Log.w("MainActivity", "Error loading tab 1", e);
                     }
-                } catch (Exception e) {
-                    Log.w("MainActivity", "Error swapping/creating tab WebView for tab " + tab, e);
+                } else {
+                    // For tabs 2 and 3, swap them in/out of the container
+                    try {
+                        WebView desired = null;
+                        try { desired = tabWebViews[tab - 1]; } catch (Exception ignored) { desired = null; }
+
+                        if (webviewParent != null) {
+                            if (desired == null) {
+                                // Lazily create + configure the WebView for this tab
+                                desired = createTabWebView(tab);
+                                tabWebViews[tab - 1] = desired;
+                                try { desired.loadUrl(url); } catch (Exception ignore) { }
+                            } else {
+                                // If forceReload is true, attempt to load the configured URL; otherwise preserve existing tab state
+                                if (forceReload) {
+                                    try {
+                                        String cur = null;
+                                        try { cur = desired.getUrl(); } catch (Exception ignore) { cur = null; }
+                                        if (cur == null || !cur.equals(url)) {
+                                            try { desired.loadUrl(url); } catch (Exception ignore) { }
+                                        }
+                                    } catch (Exception ignore) { }
+                                }
+                            }
+
+                            // Swap into parent if not already visible
+                            // But NEVER swap out tab 1 (the bridge WebView)
+                            if (desired != mainWebView) {
+                                try {
+                                    // Remove the currently visible non-tab-1 WebView
+                                    if (mainWebView != null && mainWebView != tabWebViews[0] && mainWebView.getParent() == webviewParent) {
+                                        webviewParent.removeView(mainWebView);
+                                    }
+                                    
+                                    if (desired.getParent() instanceof android.view.ViewGroup) {
+                                        ((android.view.ViewGroup) desired.getParent()).removeView(desired);
+                                    }
+                                    
+                                    // Ensure proper layout parameters for the WebView
+                                    android.widget.LinearLayout.LayoutParams layoutParams = new android.widget.LinearLayout.LayoutParams(
+                                        android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                                        0
+                                    );
+                                    layoutParams.weight = 1;
+                                    desired.setLayoutParams(layoutParams);
+                                    
+                                    webviewParent.addView(desired, webviewIndexInParent);
+                                    mainWebView = desired;
+                                    
+                                    // Keep tab array reference in sync
+                                    try { tabWebViews[tab - 1] = desired; } catch (Exception ignored) { }
+                                    
+                                    Log.d("MainActivity", "Swapped tab " + tab + " WebView into container");
+                                } catch (Exception e) {
+                                    Log.w("MainActivity", "Failed to swap WebView for tab " + tab, e);
+                                }
+                            }
+
+                            lastProgrammaticUrl = url;
+                        } else {
+                            // No swap container available — fall back to single-WebView behavior
+                            if (mainWebView != null) {
+                                try { mainWebView.stopLoading(); } catch (Exception ignore) { }
+                                try {
+                                    lastProgrammaticUrl = url;
+                                    mainWebView.loadUrl(url);
+                                } catch (Exception e) {
+                                    Log.w("MainActivity", "Failed to load URL for tab " + tab + ": " + url, e);
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                        Log.w("MainActivity", "Error handling tab " + tab, e);
+                    }
                 }
 
                 try {
@@ -657,18 +781,188 @@ public class MainActivity extends BridgeActivity {
                     currentTab = (currentTab - 1);
                     if (currentTab < 1) currentTab = MAX_TABS;
                 }
-                Log.d("MainActivity", "Switching to tab " + currentTab + " (lastProgrammaticUrl=" + lastProgrammaticUrl + ")");
-                    // Use centralized loader but do not force reload when switching tabs
-                    loadTabUrl(currentTab, false);
-                try {
-                    if (urlBar != null && !urlBarUserEditing) {
-                        try { urlBar.setText(getHomeUrlForTab(currentTab)); } catch (Exception ignore) {}
-                    }
-                } catch (Exception ignore) { }
+                Log.d("MainActivity", "Switching to tab " + currentTab);
+                
+                // Load the tab's content (which swaps the WebView into the container)
+                loadTabUrl(currentTab, false);
             } catch (Exception e) {
                 Log.w("MainActivity", "Error switching tab", e);
             }
         });
+    }
+
+    /**
+     * Refresh the currently active tab using the appropriate method for that tab's type
+     */
+    private void refreshCurrentTab() {
+        try {
+            Log.d("MainActivity", "=== REFRESH CLICKED ===");
+            Log.d("MainActivity", "currentTab: " + currentTab);
+            Log.d("MainActivity", "tabWebViews[0]: " + (tabWebViews[0] != null ? tabWebViews[0].getClass().getSimpleName() : "NULL"));
+            Log.d("MainActivity", "mainWebView: " + (mainWebView != null ? mainWebView.getClass().getSimpleName() : "NULL"));
+            Log.d("MainActivity", "Are they the same? " + (tabWebViews[0] == mainWebView));
+            
+            // For tab 1 (bridge WebView), use the dedicated refresh method
+            if (currentTab == 1) {
+                Log.d("MainActivity", "Refreshing TAB 1");
+                
+                // Try to get the bridge WebView - try multiple sources
+                WebView bridgeWv = null;
+                
+                // First try tabWebViews[0]
+                if (tabWebViews[0] != null) {
+                    bridgeWv = tabWebViews[0];
+                    Log.d("MainActivity", "Using tabWebViews[0]");
+                }
+                
+                // Fallback to mainWebView
+                if (bridgeWv == null && mainWebView != null) {
+                    bridgeWv = mainWebView;
+                    Log.d("MainActivity", "Using mainWebView as fallback");
+                }
+                
+                // Last resort: try to get from bridge directly
+                if (bridgeWv == null && this.bridge != null) {
+                    try {
+                        Object bridgeObj = this.bridge.getWebView();
+                        if (bridgeObj instanceof WebView) {
+                            bridgeWv = (WebView) bridgeObj;
+                            tabWebViews[0] = bridgeWv;  // Update the cache
+                            Log.d("MainActivity", "Got WebView from bridge directly");
+                        }
+                    } catch (Exception e) {
+                        Log.w("MainActivity", "Could not get WebView from bridge", e);
+                    }
+                }
+                
+                if (bridgeWv != null) {
+                    Log.d("MainActivity", "Calling refreshBridgeWebView");
+                    refreshBridgeWebView(bridgeWv);
+                } else {
+                    Log.e("MainActivity", "CRITICAL: Could not find bridge WebView from ANY source!");
+                }
+            } else {
+                Log.d("MainActivity", "Refreshing TAB " + currentTab + " (non-bridge)");
+                // For tabs 2 and 3, ensure they're visible then reload
+                // First swap them into view
+                loadTabUrl(currentTab, false);
+                
+                // Then reload after a short delay
+                uiHandler.postDelayed(() -> {
+                    try {
+                        WebView tab = tabWebViews[currentTab - 1];
+                        if (tab != null) {
+                            Log.d("MainActivity", "Reloading tab " + currentTab);
+                            tab.reload();
+                        } else {
+                            Log.e("MainActivity", "ERROR: Tab " + currentTab + " WebView is NULL");
+                        }
+                    } catch (Exception e) {
+                        Log.e("MainActivity", "Error reloading tab " + currentTab, e);
+                    }
+                }, 100);
+            }
+            
+        } catch (Exception e) {
+            Log.e("MainActivity", "CRITICAL ERROR in refreshCurrentTab", e);
+        }
+    }
+
+    /**
+     * Refresh the Capacitor bridge WebView using multiple strategies
+     * Since Capacitor intentionally doesn't expose reload, we need creative solutions
+     */
+    private void refreshBridgeWebView(WebView wv) {
+        try {
+            Log.d("MainActivity", "Refreshing bridge WebView (tab 1)");
+            
+            if (wv == null) {
+                Log.e("MainActivity", "Bridge WebView is NULL - cannot refresh");
+                return;
+            }
+            
+            // STRATEGY 1: Inject JavaScript to reload the page from the browser side
+            // This is the most Capacitor-friendly approach
+            try {
+                Log.d("MainActivity", "Strategy 1: JavaScript window.location.reload()");
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
+                    wv.evaluateJavascript(
+                        "(function() { " +
+                        "  console.log('Reloading page via JavaScript'); " +
+                        "  window.location.reload(true); " +
+                        "})()",
+                        result -> Log.d("MainActivity", "JavaScript reload result: " + result)
+                    );
+                    Log.d("MainActivity", "Strategy 1 SUCCESS: JavaScript reload injected");
+                    return;
+                }
+            } catch (Exception e) {
+                Log.w("MainActivity", "Strategy 1 failed: " + e.getMessage());
+            }
+            
+            // STRATEGY 2: Try WebView.reload() - this might work on the actual underlying WebView
+            try {
+                Log.d("MainActivity", "Strategy 2: Direct WebView.reload()");
+                wv.reload();
+                Log.d("MainActivity", "Strategy 2 SUCCESS: reload() called");
+                return;
+            } catch (Exception e) {
+                Log.w("MainActivity", "Strategy 2 failed: " + e.getMessage());
+            }
+            
+            // STRATEGY 3: Load the current URL again (forces page reload)
+            try {
+                Log.d("MainActivity", "Strategy 3: Re-navigate to current URL");
+                String currentUrl = wv.getUrl();
+                if (currentUrl != null && !currentUrl.isEmpty() && !currentUrl.equals("about:blank")) {
+                    Log.d("MainActivity", "Current URL: " + currentUrl + ", re-navigating...");
+                    wv.loadUrl(currentUrl);
+                    Log.d("MainActivity", "Strategy 3 SUCCESS: Re-navigated to current URL");
+                    return;
+                }
+            } catch (Exception e) {
+                Log.w("MainActivity", "Strategy 3 failed: " + e.getMessage());
+            }
+            
+            // STRATEGY 4: Inject reload with cache-busting
+            try {
+                Log.d("MainActivity", "Strategy 4: JavaScript reload with cache buster");
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
+                    long timestamp = System.currentTimeMillis();
+                    String jsCode = "(function() { " +
+                        "  var url = window.location.href; " +
+                        "  var separator = url.indexOf('?') > -1 ? '&' : '?'; " +
+                        "  var bustedUrl = url + separator + '_t=' + " + timestamp + "; " +
+                        "  console.log('Reloading with busted URL: ' + bustedUrl); " +
+                        "  window.location.href = bustedUrl; " +
+                        "})()";
+                    wv.evaluateJavascript(jsCode, null);
+                    Log.d("MainActivity", "Strategy 4 SUCCESS: Cache-buster reload injected");
+                    return;
+                }
+            } catch (Exception e) {
+                Log.w("MainActivity", "Strategy 4 failed: " + e.getMessage());
+            }
+            
+            // STRATEGY 5: Clear cache and then navigate
+            try {
+                Log.d("MainActivity", "Strategy 5: Clear cache + navigate");
+                wv.clearCache(true);
+                String currentUrl = wv.getUrl();
+                if (currentUrl != null && !currentUrl.isEmpty()) {
+                    wv.loadUrl(currentUrl);
+                    Log.d("MainActivity", "Strategy 5 SUCCESS: Cache cleared and URL re-loaded");
+                    return;
+                }
+            } catch (Exception e) {
+                Log.w("MainActivity", "Strategy 5 failed: " + e.getMessage());
+            }
+            
+            Log.e("MainActivity", "All refresh strategies FAILED for bridge WebView");
+            
+        } catch (Exception e) {
+            Log.e("MainActivity", "Critical error in refreshBridgeWebView", e);
+        }
     }
 
     /**
@@ -697,11 +991,10 @@ public class MainActivity extends BridgeActivity {
             ws.setJavaScriptCanOpenWindowsAutomatically(true);
             ws.setMediaPlaybackRequiresUserGesture(false);
             
-            // Smart caching strategy: Balance between data usage and freshness
-            // Use LOAD_DEFAULT to respect server Cache-Control headers
-            // This allows servers to control what gets cached and for how long
-            // Prevents stale content issues while still caching when appropriate
-            ws.setCacheMode(WebSettings.LOAD_DEFAULT);
+            // Smart caching strategy: Cache aggressively for tabs 2 and 3
+            // Use LOAD_CACHE_ELSE_NETWORK to prioritize cached content over network
+            // This provides faster loads and offline support
+            ws.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
             ws.setBlockNetworkLoads(false);
             ws.setBlockNetworkImage(false); // Allow images (will be cached per server headers)
             ws.setLoadsImagesAutomatically(true); // Load images automatically
@@ -804,8 +1097,34 @@ public class MainActivity extends BridgeActivity {
                     @Override
                     public boolean onTouch(View v, MotionEvent event) {
                         int action = event.getActionMasked();
+                        
+                        // If swipe was triggered, consume all subsequent events until all fingers are up
+                        if (threeFingerSwipeTriggered) {
+                            if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL || event.getPointerCount() < 3) {
+                                threeFingerSwipeTriggered = false;
+                                threeFingerStartAvgX = -1f;
+                            }
+                            return true; // Consume the event
+                        }
+                        
                         if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN) {
                             if (event.getPointerCount() == 3) {
+                                // Disallow parent ViewGroup from intercepting (prevents system split-screen gesture)
+                                if (v.getParent() != null) {
+                                    v.getParent().requestDisallowInterceptTouchEvent(true);
+                                }
+                                // Also disallow the webview container parent
+                                if (webviewParent != null) {
+                                    webviewParent.requestDisallowInterceptTouchEvent(true);
+                                }
+                                // And try the root coordinator layout
+                                try {
+                                    View rootView = findViewById(getResources().getIdentifier("root_coordinator", "id", getPackageName()));
+                                    if (rootView != null && rootView.getParent() instanceof android.view.ViewGroup) {
+                                        ((android.view.ViewGroup) rootView.getParent()).requestDisallowInterceptTouchEvent(true);
+                                    }
+                                } catch (Exception ignore) { }
+                                
                                 long now = System.currentTimeMillis();
                                 if (now - lastThreeFingerTapTime > TRIPLE_TAP_TIMEOUT_MS) threeFingerTapCount = 0;
                                 threeFingerTapCount++;
@@ -815,6 +1134,7 @@ public class MainActivity extends BridgeActivity {
                                     threeFingerTapCount = 0;
                                     threeFingerStartAvgX = -1f;
                                     threeFingerSwipeTriggered = false;
+                                    return true; // Consume triple-tap event
                                 }
                             }
                             if (event.getPointerCount() >= 3) {
@@ -839,9 +1159,36 @@ public class MainActivity extends BridgeActivity {
                                         if (nowSwipe - lastThreeFingerSwipeTime > SWIPE_COOLDOWN_MS) {
                                             threeFingerSwipeTriggered = true;
                                             lastThreeFingerSwipeTime = nowSwipe;
-                                            if (dx < 0) MainActivity.this.switchTab(true); else MainActivity.this.switchTab(false);
+                                            
+                                            // Disallow ALL parent ViewGroups from intercepting
+                                            if (v.getParent() != null) {
+                                                v.getParent().requestDisallowInterceptTouchEvent(true);
+                                            }
+                                            if (webviewParent != null) {
+                                                webviewParent.requestDisallowInterceptTouchEvent(true);
+                                            }
+                                            try {
+                                                View rootView = findViewById(getResources().getIdentifier("root_coordinator", "id", getPackageName()));
+                                                if (rootView != null && rootView.getParent() instanceof android.view.ViewGroup) {
+                                                    ((android.view.ViewGroup) rootView.getParent()).requestDisallowInterceptTouchEvent(true);
+                                                }
+                                            } catch (Exception ignore) { }
+                                            
+                                            // Show tab overview on 3-finger swipe
+                                            MainActivity.this.showTabOverview();
+                                            
+                                            // Send ACTION_CANCEL to clear WebView's touch state
+                                            try {
+                                                MotionEvent cancelEvent = MotionEvent.obtain(event);
+                                                cancelEvent.setAction(MotionEvent.ACTION_CANCEL);
+                                                ((WebView) v).onTouchEvent(cancelEvent);
+                                                cancelEvent.recycle();
+                                            } catch (Exception ignore) { }
+                                            
+                                            return true; // Consume the event
                                         } else {
                                             threeFingerSwipeTriggered = true;
+                                            return true; // Consume cooldown event
                                         }
                                     }
                                 } catch (Exception ignore) { }
@@ -853,6 +1200,10 @@ public class MainActivity extends BridgeActivity {
                                 if (event.getPointerCount() < 3) {
                                     threeFingerStartAvgX = -1f;
                                     threeFingerSwipeTriggered = false;
+                                    // Allow parent ViewGroup to intercept again (normal behavior)
+                                    if (v.getParent() != null) {
+                                        v.getParent().requestDisallowInterceptTouchEvent(false);
+                                    }
                                 }
                             } catch (Exception ignore) { threeFingerStartAvgX = -1f; threeFingerSwipeTriggered = false; }
                         }
@@ -863,6 +1214,116 @@ public class MainActivity extends BridgeActivity {
                 Log.w("MainActivity", "Failed to attach gesture handlers", e);
             }
         }
+
+    /**
+     * Attach gesture handlers to the webview container (parent ViewGroup) instead of individual WebViews.
+     * This ensures gesture detection works regardless of which tab is currently displayed.
+     */
+    private void attachGestureHandlersToContainer(android.view.ViewGroup container) {
+        try {
+            container.setOnTouchListener(new View.OnTouchListener() {
+                private int threeFingerTapCount = 0;
+                private long lastThreeFingerTapTime = 0;
+                private static final int TRIPLE_TAP_TIMEOUT_MS = 1000;
+                private float threeFingerStartAvgX = -1f;
+                private boolean threeFingerSwipeTriggered = false;
+                private long lastThreeFingerSwipeTime = 0L;
+                private final int SWIPE_COOLDOWN_MS = 600; // ms
+                private final int SWIPE_THRESHOLD_PX = 200;
+
+                @Override
+                public boolean onTouch(View v, MotionEvent event) {
+                    int action = event.getActionMasked();
+                    
+                    // If swipe was triggered, consume all subsequent events until all fingers are up
+                    if (threeFingerSwipeTriggered) {
+                        if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL || event.getPointerCount() < 3) {
+                            threeFingerSwipeTriggered = false;
+                            threeFingerStartAvgX = -1f;
+                        }
+                        return true; // Consume the event
+                    }
+                    
+                    if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN) {
+                        if (event.getPointerCount() == 3) {
+                            // Disallow parent ViewGroup from intercepting (prevents system split-screen gesture)
+                            if (v.getParent() != null) {
+                                v.getParent().requestDisallowInterceptTouchEvent(true);
+                            }
+                            
+                            long now = System.currentTimeMillis();
+                            if (now - lastThreeFingerTapTime > TRIPLE_TAP_TIMEOUT_MS) threeFingerTapCount = 0;
+                            threeFingerTapCount++;
+                            lastThreeFingerTapTime = now;
+                            if (threeFingerTapCount == 3) {
+                                openSettingsPage();
+                                threeFingerTapCount = 0;
+                                threeFingerStartAvgX = -1f;
+                                threeFingerSwipeTriggered = false;
+                                return true; // Consume triple-tap event
+                            }
+                        }
+                        if (event.getPointerCount() >= 3) {
+                            try {
+                                float sum = 0f;
+                                for (int i = 0; i < 3; i++) sum += event.getX(i);
+                                threeFingerStartAvgX = sum / 3f;
+                                threeFingerSwipeTriggered = false;
+                            } catch (Exception ignore) { threeFingerStartAvgX = -1f; }
+                        }
+                    }
+
+                    if (action == MotionEvent.ACTION_MOVE) {
+                        if (event.getPointerCount() >= 3 && threeFingerStartAvgX >= 0 && !threeFingerSwipeTriggered) {
+                            try {
+                                float sum = 0f;
+                                for (int i = 0; i < 3; i++) sum += event.getX(i);
+                                float curAvg = sum / 3f;
+                                float dx = curAvg - threeFingerStartAvgX;
+                                if (Math.abs(dx) > SWIPE_THRESHOLD_PX) {
+                                    long nowSwipe = System.currentTimeMillis();
+                                    if (nowSwipe - lastThreeFingerSwipeTime > SWIPE_COOLDOWN_MS) {
+                                        threeFingerSwipeTriggered = true;
+                                        lastThreeFingerSwipeTime = nowSwipe;
+                                        
+                                        // Disallow ALL parent ViewGroups from intercepting
+                                        if (v.getParent() != null) {
+                                            v.getParent().requestDisallowInterceptTouchEvent(true);
+                                        }
+                                        
+                                        Log.d("MainActivity", "Container gesture detected: dx=" + dx + ", showing tab overview");
+                                        // Show tab overview on 3-finger swipe
+                                        MainActivity.this.showTabOverview();
+                                        
+                                        return true; // Consume the event
+                                    } else {
+                                        threeFingerSwipeTriggered = true;
+                                        return true; // Consume cooldown event
+                                    }
+                                }
+                            } catch (Exception ignore) { }
+                        }
+                    }
+
+                    if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP || action == MotionEvent.ACTION_CANCEL) {
+                        try {
+                            if (event.getPointerCount() < 3) {
+                                threeFingerStartAvgX = -1f;
+                                threeFingerSwipeTriggered = false;
+                                // Allow parent ViewGroup to intercept again (normal behavior)
+                                if (v.getParent() != null) {
+                                    v.getParent().requestDisallowInterceptTouchEvent(false);
+                                }
+                            }
+                        } catch (Exception ignore) { threeFingerStartAvgX = -1f; threeFingerSwipeTriggered = false; }
+                    }
+                    return false;
+                }
+            });
+        } catch (Exception e) {
+            Log.w("MainActivity", "Failed to attach gesture handlers to container", e);
+        }
+    }
 
     /**
      * Preload tabs 2 and 3 in the background after tab 1 has finished loading.
@@ -972,6 +1433,10 @@ public class MainActivity extends BridgeActivity {
             if (wv != null) {
                 // Store WebView reference for back button functionality
                 this.mainWebView = wv;
+                
+                // IMPORTANT: Set tab 1 reference immediately so loadTabUrl doesn't create a duplicate
+                try { tabWebViews[0] = wv; } catch (Exception ignored) { }
+                
                 try {
                     // If our layout contains a placeholder WebView (`R.id.main_webview`), replace it with the bridge WebView
                     View placeholder = findViewById(getResources().getIdentifier("main_webview", "id", getPackageName()));
@@ -996,8 +1461,15 @@ public class MainActivity extends BridgeActivity {
                             webviewParent = parent;
                             webviewIndexInParent = index;
                             parent.addView(wv, index);
-                            // Treat the bridge WebView as tab 1 so it preserves its state when switching
-                            try { tabWebViews[0] = wv; } catch (Exception ignored) { }
+                            // Tab 1 is already set in tabWebViews[0] above
+                            
+                            // Attach gesture handlers to the webviewParent container so they work
+                            // regardless of which tab WebView is currently displayed
+                            try {
+                                attachGestureHandlersToContainer(webviewParent);
+                            } catch (Exception e) {
+                                Log.w("MainActivity", "Failed to attach gesture handlers to container", e);
+                            }
 
                         // Prefer loading the active tab's configured home URL into the bridge WebView
                         try {
@@ -1815,6 +2287,33 @@ public class MainActivity extends BridgeActivity {
 
     private void handleIntent(Intent intent) {
         Log.d("MainActivity", "handleIntent called with action: " + (intent != null ? intent.getAction() : "null"));
+        
+        // Handle opening a URL in tab 1 (from link in Tutorial or other activities)
+        if (intent != null && intent.hasExtra("load_url_in_tab_1")) {
+            String urlToLoad = intent.getStringExtra("load_url_in_tab_1");
+            Log.d("MainActivity", "handleIntent: Loading URL in tab 1: " + urlToLoad);
+            if (urlToLoad != null) {
+                uiHandler.post(() -> {
+                    try {
+                        // If we're not already on tab 1, switch to it
+                        if (currentTab != 1) {
+                            Log.d("MainActivity", "Switching from tab " + currentTab + " to tab 1");
+                            currentTab = 1;
+                            loadTabUrl(1, false);
+                        }
+                        // Load the URL in the main WebView (which should now be tab 1)
+                        if (mainWebView != null) {
+                            mainWebView.loadUrl(urlToLoad);
+                            Log.d("MainActivity", "Loaded URL in tab 1: " + urlToLoad);
+                        }
+                    } catch (Exception e) {
+                        Log.e("MainActivity", "Error loading URL in tab 1", e);
+                    }
+                });
+            }
+            return;
+        }
+        
         String action = intent.getAction();
         Uri data = intent.getData();
         Log.d("MainActivity", "Intent data: " + (data != null ? data.toString() : "null"));
@@ -2421,6 +2920,22 @@ public class MainActivity extends BridgeActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         
+        // REQUEST_CODE 1 is for tab grid overlay
+        if (requestCode == 1 && resultCode == RESULT_OK && data != null) {
+            int selectedTab = data.getIntExtra("selected_tab", currentTab);
+            if (selectedTab >= 1 && selectedTab <= MAX_TABS && selectedTab != currentTab) {
+                currentTab = selectedTab;
+                Log.d("MainActivity", "Tab switched to " + currentTab + " from grid overlay");
+                loadTabUrl(currentTab, false);
+                try {
+                    if (urlBar != null && !urlBarUserEditing) {
+                        try { urlBar.setText(getHomeUrlForTab(currentTab)); } catch (Exception ignore) {}
+                    }
+                } catch (Exception ignore) { }
+            }
+            return;
+        }
+        
         // REQUEST_CODE 1001 is for wallet connection
         if (requestCode == 1001) {
             if (resultCode == RESULT_OK && data != null) {
@@ -2498,6 +3013,250 @@ public class MainActivity extends BridgeActivity {
     private void openSettingsPage() {
         Intent intent = new Intent(this, SettingsActivity.class);
         startActivity(intent);
+    }
+
+    /**
+     * Show tab overview - displays all 3 tabs scaled down in a grid for easy switching
+     */
+    private void showTabOverview() {
+        try {
+            // First, ensure all tabs are loaded
+            for (int i = 0; i < MAX_TABS; i++) {
+                if (tabWebViews[i] == null) {
+                    tabWebViews[i] = createTabWebView(i + 1);
+                    String url = getHomeUrlForTab(i + 1);
+                    tabWebViews[i].loadUrl(url);
+                    Log.d("MainActivity", "Preloading tab " + (i + 1) + ": " + url);
+                }
+            }
+
+            // Create a full-screen overlay container
+            android.widget.FrameLayout overlayContainer = new android.widget.FrameLayout(MainActivity.this);
+            overlayContainer.setLayoutParams(new android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT
+            ));
+            overlayContainer.setBackgroundColor(0xFF1a1a1a);
+            overlayContainer.setTag("tab_overview_overlay");
+
+            // Create a scroll view to hold tab previews
+            android.widget.ScrollView scrollView = new android.widget.ScrollView(MainActivity.this);
+            android.widget.FrameLayout.LayoutParams scrollParams = new android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT
+            );
+            scrollView.setLayoutParams(scrollParams);
+
+            // Get screen dimensions for cards (2 per row)
+            android.util.DisplayMetrics metrics = new android.util.DisplayMetrics();
+            getWindowManager().getDefaultDisplay().getMetrics(metrics);
+            int screenWidth = metrics.widthPixels;
+            int cardWidth = (screenWidth - 32) / 2; // 2 columns with padding
+            int cardHeight = (int) (cardWidth * 1.6f); // Portrait ratio (taller than wide)
+
+            // Create a grid layout to hold tab cards in 2 columns
+            android.widget.LinearLayout gridContainer = new android.widget.LinearLayout(MainActivity.this);
+            gridContainer.setOrientation(android.widget.LinearLayout.VERTICAL);
+            gridContainer.setClipChildren(true);
+            gridContainer.setClipToPadding(true);
+            android.widget.ScrollView.LayoutParams gridParams = new android.widget.ScrollView.LayoutParams(
+                android.widget.ScrollView.LayoutParams.MATCH_PARENT,
+                android.widget.ScrollView.LayoutParams.WRAP_CONTENT
+            );
+            gridContainer.setLayoutParams(gridParams);
+            gridContainer.setPadding(8, 8, 8, 8);
+
+            // Create 2 rows for 3 tabs (first row has 2, second row has 1)
+            for (int row = 0; row < 2; row++) {
+                android.widget.LinearLayout rowLayout = new android.widget.LinearLayout(MainActivity.this);
+                rowLayout.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+                rowLayout.setClipChildren(true);
+                rowLayout.setClipToPadding(true);
+                android.widget.LinearLayout.LayoutParams rowParams = new android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                );
+                rowParams.setMargins(0, 4, 0, 4);
+                rowLayout.setLayoutParams(rowParams);
+
+                // Add up to 2 tabs per row
+                for (int col = 0; col < 2; col++) {
+                    int tabIndex = row * 2 + col;
+                    if (tabIndex >= MAX_TABS) break;
+
+                    final int finalTabIndex = tabIndex;
+                    final int tabNumber = tabIndex + 1;
+
+                    // Create container for the card (WebView + label)
+                    android.widget.LinearLayout cardLayout = new android.widget.LinearLayout(MainActivity.this);
+                    cardLayout.setOrientation(android.widget.LinearLayout.VERTICAL);
+                    cardLayout.setClipChildren(true);
+                    cardLayout.setClipToPadding(true);
+                    android.widget.LinearLayout.LayoutParams cardParams = new android.widget.LinearLayout.LayoutParams(
+                        cardWidth,
+                        android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                    );
+                    cardParams.setMargins(4, 0, 4, 0);
+                    cardLayout.setLayoutParams(cardParams);
+                    cardLayout.setBackgroundColor(0xFF2a2a2a);
+
+                    // Create container for tab preview (will hold WebView)
+                    android.widget.FrameLayout previewContainer = new android.widget.FrameLayout(MainActivity.this);
+                    android.widget.LinearLayout.LayoutParams previewParams = new android.widget.LinearLayout.LayoutParams(
+                        android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                        cardHeight
+                    );
+                    previewContainer.setLayoutParams(previewParams);
+                    previewContainer.setClipChildren(true);
+                    previewContainer.setClipToPadding(true);
+                    previewContainer.setBackgroundColor(0xFF333333);
+
+                    // Display actual tab content at scaled size (not a separate WebView)
+                    if (tabWebViews[tabIndex] != null) {
+                        WebView actualTabWebView = tabWebViews[tabIndex];
+                        
+                        // Save original dimensions
+                        int originalWidth = actualTabWebView.getMeasuredWidth();
+                        int originalHeight = actualTabWebView.getMeasuredHeight();
+                        
+                        // Temporarily remove from parent if needed
+                        android.view.ViewGroup originalParent = (android.view.ViewGroup) actualTabWebView.getParent();
+                        if (originalParent != null) {
+                            originalParent.removeView(actualTabWebView);
+                        }
+                        
+                        // Size the WebView much larger than the preview
+                        int scaledWebViewWidth = (int) (cardWidth * 3.33f);
+                        int scaledWebViewHeight = (int) (cardHeight * 3.33f);
+                        
+                        android.widget.FrameLayout.LayoutParams previewWebViewParams = new android.widget.FrameLayout.LayoutParams(
+                            scaledWebViewWidth,
+                            scaledWebViewHeight
+                        );
+                        previewWebViewParams.gravity = android.view.Gravity.TOP | android.view.Gravity.LEFT;
+                        previewContainer.addView(actualTabWebView, previewWebViewParams);
+                        
+                        // Scale down to fit preview
+                        actualTabWebView.setScaleX(0.3f);
+                        actualTabWebView.setScaleY(0.3f);
+                        actualTabWebView.setPivotX(0);
+                        actualTabWebView.setPivotY(0);
+                        
+                        // Disable interactions
+                        actualTabWebView.setEnabled(false);
+                        actualTabWebView.setClickable(false);
+                        actualTabWebView.setLongClickable(false);
+                        actualTabWebView.setFocusable(false);
+                        actualTabWebView.setFocusableInTouchMode(false);
+                        actualTabWebView.setOnTouchListener((v, event) -> true);
+                    }
+                    
+                    // Create a transparent touch blocker overlay on top of the WebView preview
+                    android.view.View touchBlockerPreview = new android.view.View(MainActivity.this);
+                    android.widget.FrameLayout.LayoutParams blockerPreviewParams = new android.widget.FrameLayout.LayoutParams(
+                        cardWidth,
+                        cardHeight
+                    );
+                    blockerPreviewParams.gravity = android.view.Gravity.TOP | android.view.Gravity.LEFT;
+                    touchBlockerPreview.setLayoutParams(blockerPreviewParams);
+                    touchBlockerPreview.setBackgroundColor(0x00000000); // Fully transparent
+                    
+                    // Set click listener on the touch blocker to select this tab
+                    touchBlockerPreview.setOnClickListener(v -> {
+                        Log.d("MainActivity", "Tab " + tabNumber + " clicked");
+                        currentTab = tabNumber;
+                        
+                        // Restore all tab WebViews to original state (undo scaling)
+                        for (int i = 0; i < MAX_TABS; i++) {
+                            if (tabWebViews[i] != null) {
+                                tabWebViews[i].setScaleX(1.0f);
+                                tabWebViews[i].setScaleY(1.0f);
+                                tabWebViews[i].setEnabled(true);
+                                tabWebViews[i].setClickable(true);
+                                tabWebViews[i].setFocusable(true);
+                                tabWebViews[i].setFocusableInTouchMode(true);
+                                // Re-attach gesture handlers instead of clearing them
+                                attachGestureHandlers(tabWebViews[i]);
+                            }
+                        }
+                        
+                        // Remove overlay first
+                        android.view.View parent = findViewById(getResources().getIdentifier("root_coordinator", "id", getPackageName()));
+                        if (parent instanceof android.view.ViewGroup) {
+                            ((android.view.ViewGroup) parent).removeView(overlayContainer);
+                        }
+                        
+                        // Move selected tab to main container
+                        if (tabWebViews[finalTabIndex].getParent() != null) {
+                            ((android.view.ViewGroup) tabWebViews[finalTabIndex].getParent()).removeView(tabWebViews[finalTabIndex]);
+                        }
+                        if (webviewParent != null) {
+                            webviewParent.removeView(mainWebView);
+                            
+                            // Ensure proper layout parameters for the tab WebView
+                            android.widget.LinearLayout.LayoutParams layoutParams = new android.widget.LinearLayout.LayoutParams(
+                                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                                0
+                            );
+                            layoutParams.weight = 1;
+                            tabWebViews[finalTabIndex].setLayoutParams(layoutParams);
+                            
+                            webviewParent.addView(tabWebViews[finalTabIndex], webviewIndexInParent);
+                            Log.d("MainActivity", "Added tab " + tabNumber + " to main container with proper layout params");
+                        }
+                        mainWebView = tabWebViews[finalTabIndex];
+                        
+                        try {
+                            if (urlBar != null && !urlBarUserEditing) {
+                                try { urlBar.setText(mainWebView.getUrl()); } catch (Exception ignore) {}
+                            }
+                        } catch (Exception ignore) { }
+                        
+                        Log.d("MainActivity", "Now showing tab " + tabNumber);
+                    });                    previewContainer.addView(touchBlockerPreview);
+
+                    cardLayout.addView(previewContainer);
+
+                    // Add tab title at the bottom (will show page title)
+                    android.widget.TextView tabLabel = new android.widget.TextView(MainActivity.this);
+                    String pageTitle = "Tab " + tabNumber;
+                    if (tabWebViews[tabIndex] != null) {
+                        String title = tabWebViews[tabIndex].getTitle();
+                        if (title != null && !title.isEmpty()) {
+                            pageTitle = title;
+                        }
+                    }
+                    tabLabel.setText(pageTitle);
+                    tabLabel.setTextColor(0xFFC9B26D);
+                    tabLabel.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 12);
+                    tabLabel.setTypeface(null, android.graphics.Typeface.BOLD);
+                    tabLabel.setPadding(8, 6, 8, 6);
+                    tabLabel.setMaxLines(2);
+                    tabLabel.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                    tabLabel.setGravity(android.view.Gravity.CENTER);
+                    android.widget.LinearLayout.LayoutParams labelParams = new android.widget.LinearLayout.LayoutParams(
+                        android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                        android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                    );
+                    cardLayout.addView(tabLabel, labelParams);
+
+                    rowLayout.addView(cardLayout);
+                }
+
+                gridContainer.addView(rowLayout);
+            }
+
+            scrollView.addView(gridContainer);
+            overlayContainer.addView(scrollView);
+
+            // Add overlay to root view
+            android.view.View rootView = findViewById(getResources().getIdentifier("root_coordinator", "id", getPackageName()));
+            if (rootView instanceof android.view.ViewGroup) {
+                ((android.view.ViewGroup) rootView).addView(overlayContainer);
+            }
+        } catch (Exception e) {
+            Log.e("MainActivity", "Error showing tab overview", e);
+        }
     }
 
     /**

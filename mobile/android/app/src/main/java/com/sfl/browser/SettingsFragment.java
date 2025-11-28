@@ -34,6 +34,20 @@ public class SettingsFragment extends PreferenceFragmentCompat {
                     });
                 }
 
+                // --- Android Buttons Toggle (System Navigation Bar) ---
+                SwitchPreferenceCompat androidButtonsPref = findPreference("android_buttons");
+                if (androidButtonsPref != null) {
+                    SharedPreferences prefs = androidx.preference.PreferenceManager.getDefaultSharedPreferences(requireContext());
+                    if (!prefs.contains("android_buttons")) {
+                        prefs.edit().putBoolean("android_buttons", true).apply();
+                    }
+                    androidButtonsPref.setOnPreferenceChangeListener((preference, newValue) -> {
+                        boolean enabled = Boolean.TRUE.equals(newValue);
+                        android.util.Log.d("SettingsFragment", "Android buttons toggled: " + enabled);
+                        return true;
+                    });
+                }
+
 
                 // --- Home Page Editable Field ---
                 Preference homePagePref = findPreference("home_page");

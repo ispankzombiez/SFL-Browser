@@ -45,7 +45,7 @@ public class InfoActivity extends AppCompatActivity {
             "<p style=\"color: #e6c97a; margin: 16px 0 8px 0;\"><b>However, if you would like to help the developer further develop this app, you can do so by:</b></p>";
         Spanned spannedText1 = Html.fromHtml(htmlContent1, Html.FROM_HTML_MODE_LEGACY);
         textView.setText(spannedText1);
-        textView.setMovementMethod(android.text.method.LinkMovementMethod.getInstance());
+        textView.setMovementMethod(new SunflowerLandLinkHandler(this));
         container.addView(textView);
         
         // Horizontal wrapper for "Donate to this address:" + address + button on same line
@@ -126,7 +126,7 @@ public class InfoActivity extends AppCompatActivity {
         
         Spanned spannedText3 = Html.fromHtml(htmlContent3, Html.FROM_HTML_MODE_LEGACY);
         textView3.setText(spannedText3);
-        textView3.setMovementMethod(android.text.method.LinkMovementMethod.getInstance());
+        textView3.setMovementMethod(new SunflowerLandLinkHandler(this));
         
         container.addView(textView3);
     }

@@ -7,8 +7,6 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-
-
     <LinearLayout
         android:orientation="vertical"
         android:layout_width="match_parent"
@@ -44,7 +42,7 @@
             android:id="@+id/url_bar"
             android:layout_width="0dp"
             android:layout_height="32dp"
-            android:layout_weight="1"
+            android:layout_weight="0.7"
             android:background="#EEEEEE"
             android:hint="Enter URL"
             android:inputType="textUri"
@@ -52,29 +50,49 @@
             android:imeOptions="actionGo"
             android:paddingLeft="8dp"
             android:paddingRight="8dp"
-            android:textSize="13sp"
+            android:textSize="11sp"
             android:textColor="#000000"
             android:ellipsize="end"
             android:maxLines="1"
             android:minWidth="48dp"
-            android:maxWidth="600dp"
+            android:maxWidth="150dp"
             android:focusable="true"
-            android:focusableInTouchMode="true" />
+            android:focusableInTouchMode="true"
+            android:layout_marginRight="12dp" />
+        <Button
+            android:id="@+id/btn_tab_switcher"
+            android:layout_width="19dp"
+            android:layout_height="19dp"
+            android:text=""
+            android:contentDescription="Switch Tab"
+            android:background="#FFFFFF"
+            android:textColor="#333333"
+            android:padding="0dp"
+            android:layout_marginRight="10dp" />
         <ImageButton
-            android:id="@+id/btn_reload"
+            android:id="@+id/btn_menu"
             android:layout_width="36dp"
             android:layout_height="36dp"
-            android:src="@android:drawable/ic_popup_sync"
-            android:contentDescription="Reload"
-            android:background="?attr/selectableItemBackgroundBorderless" />
+            android:src="@android:drawable/ic_menu_more"
+            android:contentDescription="Menu"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:scaleType="centerInside" />
 
         </LinearLayout>
 
-        <WebView
-            android:id="@+id/main_webview"
+        <!-- LinearLayout to hold the main WebView - will swap in/out different tabs -->
+        <LinearLayout
+            android:id="@+id/webview_container"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1" />
+            android:layout_weight="1"
+            android:orientation="vertical">
+            
+            <WebView
+                android:id="@+id/main_webview"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+        </LinearLayout>
 
     </LinearLayout>
 

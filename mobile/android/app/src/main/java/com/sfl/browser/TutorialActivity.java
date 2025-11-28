@@ -6,6 +6,7 @@ import androidx.appcompat.widget.Toolbar;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.text.Html;
+import android.text.method.LinkMovementMethod;
 
 public class TutorialActivity extends AppCompatActivity {
     @Override
@@ -27,6 +28,8 @@ public class TutorialActivity extends AppCompatActivity {
         TextView tutorialContent = findViewById(R.id.tutorial_content);
         String tutorial = getTutorialContent();
         tutorialContent.setText(Html.fromHtml(tutorial, Html.FROM_HTML_MODE_LEGACY));
+        // Make links clickable with custom handler for sunflower-land links
+        tutorialContent.setMovementMethod(new SunflowerLandLinkHandler(this));
     }
     
     @Override
@@ -110,6 +113,7 @@ public class TutorialActivity extends AppCompatActivity {
                 "<ul>" +
                 "<li>Enable \"Auto Start Worker\" to automatically begin checking for notifications when you open the app</li>" +
                 "<li>Use the three tabs in browser mode to quickly switch between your Farm, the SFL Wiki, and other resources</li>" +
+                "<li>You can also swipe left or right with 3 fingers to switch between tabs quickly</li>" +
                 "<li>Customize notification categories based on your playstyle - don't get overwhelmed by too many alerts</li>" +
                 "<li>Triple-tap with 3 fingers to access Settings even when browser controls are hidden</li>" +
                 "<li>Keep your API Key secure - it is sensitive account information. This app only uses it on your behalf to fetch your game data and does not share it with third parties.</li>" +

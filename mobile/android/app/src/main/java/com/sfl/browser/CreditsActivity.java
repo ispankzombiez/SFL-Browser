@@ -60,7 +60,7 @@ public class CreditsActivity extends AppCompatActivity {
                 "<p style=\"color: #e6e6e6; margin: 4px 0 0 0;\">Portfolio: <a href=\"https://kohirabbit.carrd.co/\" style=\"color: #c9b26d;\">https://kohirabbit.carrd.co/</a></p>";
         Spanned contributor1Spanned = Html.fromHtml(contributor1Html, Html.FROM_HTML_MODE_LEGACY);
         contributor1.setText(contributor1Spanned);
-        contributor1.setMovementMethod(android.text.method.LinkMovementMethod.getInstance());
+        contributor1.setMovementMethod(new SunflowerLandLinkHandler(this));
         container.addView(contributor1);
         
         // Divider
@@ -86,7 +86,7 @@ public class CreditsActivity extends AppCompatActivity {
                 "<p style=\"color: #e6e6e6; margin: 0;\">Farm: <a href=\"https://sunflower-land.com/play/#/visit/137396\" style=\"color: #c9b26d;\">https://sunflower-land.com/play/#/visit/137396</a></p>";
         Spanned contributor2Spanned = Html.fromHtml(contributor2Html, Html.FROM_HTML_MODE_LEGACY);
         contributor2.setText(contributor2Spanned);
-        contributor2.setMovementMethod(android.text.method.LinkMovementMethod.getInstance());
+        contributor2.setMovementMethod(new SunflowerLandLinkHandler(this));
         container.addView(contributor2);
         
         // Final divider
