@@ -143,7 +143,19 @@ public class SettingsFragment extends PreferenceFragmentCompat {
             String currentPackage = prefs.getString("app_to_open", null);
             if (currentPackage == null || currentPackage.trim().isEmpty()) {
                 prefs.edit().putString("app_to_open", requireContext().getPackageName()).apply();
+                currentPackage = requireContext().getPackageName();
             }
+            
+            // Load and display the currently saved app in the summary
+            if (currentPackage != null && !currentPackage.isEmpty()) {
+                String displayLabel = prefs.getString("app_to_open_label", null);
+                if (displayLabel != null && !displayLabel.isEmpty()) {
+                    appToOpenPref.setSummary(displayLabel + " (" + currentPackage + ")");
+                } else {
+                    appToOpenPref.setSummary(currentPackage);
+                }
+            }
+            
             // Hide by default unless notifications only is true
             boolean notificationsOnly = onlyNotificationsPref.isChecked();
             appToOpenPref.setVisible(notificationsOnly);
@@ -234,7 +246,10 @@ public class SettingsFragment extends PreferenceFragmentCompat {
                             if (which < packageNames.size()) {
                                 String pkg = packageNames.get(which);
                                 String label = displayNames.get(which);
-                                prefs.edit().putString("app_to_open", pkg).apply();
+                                prefs.edit()
+                                    .putString("app_to_open", pkg)
+                                    .putString("app_to_open_label", label)
+                                    .apply();
                                 appToOpenPref.setSummary(label + " (" + pkg + ")");
                             } else {
                                 // Custom option

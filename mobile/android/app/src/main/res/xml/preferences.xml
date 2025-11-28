@@ -36,6 +36,11 @@
             android:title="Notifications Only"
             android:summary="When enabled, app opens to Settings instead of the game. Disables web browsing and keeps only the notification system."
             android:defaultValue="true" />
+        <Preference
+            android:key="app_to_open"
+            android:title="App to Open"
+            android:summary="Select the app to open when a notification is clicked."
+        />
         <SwitchPreferenceCompat
             android:key="no_browser_controls"
             android:title="No Browser Controls"
@@ -69,11 +74,6 @@
             android:summary="Set the default home page URL for tab 3."
             android:inputType="textUri"
             android:defaultValue="https://wiki.sfl.world" />
-        <Preference
-            android:key="app_to_open"
-            android:title="App to Open"
-            android:summary="Select the app to open when a notification is clicked."
-        />
         <Preference
             android:key="open_webview"
             android:title="Open Game (One Time)"
