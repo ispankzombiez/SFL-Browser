@@ -148,11 +148,23 @@ public class SettingsFragment extends PreferenceFragmentCompat {
             
             // Load and display the currently saved app in the summary
             if (currentPackage != null && !currentPackage.isEmpty()) {
-                String displayLabel = prefs.getString("app_to_open_label", null);
-                if (displayLabel != null && !displayLabel.isEmpty()) {
-                    appToOpenPref.setSummary(displayLabel + " (" + currentPackage + ")");
+                if ("custom".equals(currentPackage)) {
+                    // Custom app - show package and activity
+                    String packageName = prefs.getString("custom_package_name", "");
+                    String activityName = prefs.getString("custom_activity_name", "");
+                    if (!packageName.isEmpty() && !activityName.isEmpty()) {
+                        appToOpenPref.setSummary("Custom: " + packageName + " / " + activityName);
+                    } else {
+                        appToOpenPref.setSummary("Custom (not configured)");
+                    }
                 } else {
-                    appToOpenPref.setSummary(currentPackage);
+                    // Predefined app
+                    String displayLabel = prefs.getString("app_to_open_label", null);
+                    if (displayLabel != null && !displayLabel.isEmpty()) {
+                        appToOpenPref.setSummary(displayLabel + " (" + currentPackage + ")");
+                    } else {
+                        appToOpenPref.setSummary(currentPackage);
+                    }
                 }
             }
             
@@ -252,17 +264,36 @@ public class SettingsFragment extends PreferenceFragmentCompat {
                                     .apply();
                                 appToOpenPref.setSummary(label + " (" + pkg + ")");
                             } else {
-                                // Custom option
-                                final android.widget.EditText input = new android.widget.EditText(requireContext());
-                                input.setHint("package.name or package/name");
+                                // Custom option - show dialog to enter package and activity
+                                final android.view.View customView = getLayoutInflater().inflate(android.R.layout.simple_list_item_2, null);
+                                final android.widget.LinearLayout layout = new android.widget.LinearLayout(requireContext());
+                                layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+                                layout.setPadding(50, 40, 50, 10);
+                                
+                                final android.widget.EditText packageInput = new android.widget.EditText(requireContext());
+                                packageInput.setHint("Package name (e.g., com.uniswap.mobile)");
+                                packageInput.setText(prefs.getString("custom_package_name", ""));
+                                layout.addView(packageInput);
+                                
+                                final android.widget.EditText activityInput = new android.widget.EditText(requireContext());
+                                activityInput.setHint("Activity name (e.g., com.uniswap.MainActivity)");
+                                activityInput.setText(prefs.getString("custom_activity_name", ""));
+                                layout.addView(activityInput);
+                                
                                 new androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                                        .setTitle("Enter Package Name")
-                                        .setView(input)
+                                        .setTitle("Enter Package and Activity")
+                                        .setView(layout)
                                         .setPositiveButton("OK", (d, w) -> {
-                                            String value = input.getText().toString().trim();
-                                            if (!value.isEmpty()) {
-                                                prefs.edit().putString("app_to_open", value).apply();
-                                                appToOpenPref.setSummary("Custom: " + value);
+                                            String packageName = packageInput.getText().toString().trim();
+                                            String activityName = activityInput.getText().toString().trim();
+                                            if (!packageName.isEmpty() && !activityName.isEmpty()) {
+                                                prefs.edit()
+                                                    .putString("app_to_open", "custom")
+                                                    .putString("custom_package_name", packageName)
+                                                    .putString("custom_activity_name", activityName)
+                                                    .putString("app_to_open_label", "")
+                                                    .apply();
+                                                appToOpenPref.setSummary("Custom: " + packageName + " / " + activityName);
                                             }
                                         })
                                         .setNegativeButton("Cancel", null)

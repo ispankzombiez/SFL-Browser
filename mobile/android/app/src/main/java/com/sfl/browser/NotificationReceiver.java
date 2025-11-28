@@ -21,6 +21,8 @@ public class NotificationReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         Log.i("NOTIFICATION_DEBUG", "📬 NotificationReceiver triggered!");
+        Log.i("NOTIFICATION_DEBUG", "Intent action: " + intent.getAction());
+        Log.i("NOTIFICATION_DEBUG", "Intent extras: " + intent.getExtras());
         
         int notificationId = intent.getIntExtra("notificationId", 0);
         String title = intent.getStringExtra("title");
@@ -61,111 +63,51 @@ public class NotificationReceiver extends BroadcastReceiver {
             
             Intent appIntent;
             if (onlyNotificationsMode) {
-                // Always use the package specified in 'app to open' if notifications only is true
-                String customPackage = prefs.getString("app_to_open", "");
-                Log.d("NotificationReceiver", "📦 Attempting to open custom package: '" + customPackage + "' (raw value from prefs)");
-                
-                // Also check what keys are available in the prefs
-                java.util.Map<String, ?> allPrefs = prefs.getAll();
-                Log.d("NotificationReceiver", "🔑 All preference keys available: " + allPrefs.keySet());
-                Log.d("NotificationReceiver", "💾 app_to_open value in prefs: '" + prefs.getString("app_to_open", "DEFAULT_NOT_SET") + "'");
+                // Check if custom app is configured
+                String appToOpen = prefs.getString("app_to_open", "");
+                Log.d("NotificationReceiver", "📦 app_to_open: '" + appToOpen + "'");
                 
                 Intent launchIntent = null;
                 boolean triedCustom = false;
-                if (customPackage != null && !customPackage.trim().isEmpty()) {
+                
+                if ("custom".equals(appToOpen)) {
+                    // Custom app with explicit package and activity
+                    String customPackage = prefs.getString("custom_package_name", "");
+                    String customActivity = prefs.getString("custom_activity_name", "");
+                    Log.d("NotificationReceiver", "📦 Custom app - package: '" + customPackage + "', activity: '" + customActivity + "'");
+                    
+                    if (!customPackage.isEmpty() && !customActivity.isEmpty()) {
+                        triedCustom = true;
+                        try {
+                            launchIntent = new Intent();
+                            launchIntent.setClassName(customPackage, customActivity);
+                            launchIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                            Log.d("NotificationReceiver", "✅ Created intent for custom app: " + customPackage + "/" + customActivity);
+                        } catch (Exception e) {
+                            Log.e("NotificationReceiver", "❌ Error creating intent for custom app: " + e.getMessage(), e);
+                            launchIntent = null;
+                        }
+                    }
+                } else if (appToOpen != null && !appToOpen.trim().isEmpty()) {
+                    // Predefined app - try to get launch intent
                     triedCustom = true;
                     try {
                         android.content.pm.PackageManager pm = context.getPackageManager();
-                        
-                        // Try standard launch intent first
-                        launchIntent = pm.getLaunchIntentForPackage(customPackage);
-                        Log.d("NotificationReceiver", "getLaunchIntentForPackage result: " + (launchIntent != null ? launchIntent.toString() : "null"));
-                        
-                        if (launchIntent == null) {
-                            // Try to find the main activity
-                            Intent mainIntent = new Intent(Intent.ACTION_MAIN);
-                            mainIntent.setPackage(customPackage);
-                            mainIntent.addCategory(Intent.CATEGORY_LAUNCHER);
-                            java.util.List<android.content.pm.ResolveInfo> activities = pm.queryIntentActivities(mainIntent, 0);
-                            Log.d("NotificationReceiver", "queryIntentActivities found " + activities.size() + " activities for MAIN/LAUNCHER in package: '" + customPackage + "'");
-                            
-                            if (!activities.isEmpty()) {
-                                // Get the first activity
-                                android.content.pm.ResolveInfo firstActivity = activities.get(0);
-                                launchIntent = new Intent(Intent.ACTION_MAIN);
-                                launchIntent.setClassName(customPackage, firstActivity.activityInfo.name);
-                                launchIntent.addCategory(Intent.CATEGORY_LAUNCHER);
-                                launchIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                            } else {
-                                // Try to query all activities for the package
-                                Intent intentFilter = new Intent();
-                                intentFilter.setPackage(customPackage);
-                                java.util.List<android.content.pm.ResolveInfo> allActivities = pm.queryIntentActivities(intentFilter, android.content.pm.PackageManager.GET_ACTIVITIES);
-                                Log.d("NotificationReceiver", "queryIntentActivities (no filter) found " + allActivities.size() + " activities for package: '" + customPackage + "'");
-                                
-                                if (!allActivities.isEmpty()) {
-                                    android.content.pm.ResolveInfo firstActivity = allActivities.get(0);
-                                    launchIntent = new Intent();
-                                    launchIntent.setClassName(customPackage, firstActivity.activityInfo.name);
-                                    launchIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                }
-                            }
-                        }
-                        
-                        if (launchIntent == null) {
-                            Log.e("NotificationReceiver", "No launchable activity found for package: " + customPackage);
-                            
-                            // Special handling for OKX Wallet
-                            if ("com.okx.wallet".equals(customPackage)) {
-                                Log.d("NotificationReceiver", "Applying special handling for OKX Wallet");
-                                try {
-                                    // Try specific OKX activity names
-                                    String[] okxActivityNames = {
-                                        "com.okx.wallet.MainActivity",
-                                        "com.okx.wallet.ui.MainActivity",
-                                        "com.okx.wallet.activity.MainActivity",
-                                        "com.okx.wallet.splash.SplashActivity",
-                                        "com.okx.wallet.ui.splash.SplashActivity"
-                                    };
-                                    
-                                    for (String activityName : okxActivityNames) {
-                                        try {
-                                            launchIntent = new Intent();
-                                            launchIntent.setClassName(customPackage, activityName);
-                                            launchIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                            // Verify by querying
-                                            Intent testIntent = new Intent();
-                                            testIntent.setClassName(customPackage, activityName);
-                                            java.util.List<android.content.pm.ResolveInfo> testResult = pm.queryIntentActivities(testIntent, 0);
-                                            if (!testResult.isEmpty()) {
-                                                Log.d("NotificationReceiver", "Found OKX activity: " + activityName);
-                                                break;
-                                            }
-                                            launchIntent = null;
-                                        } catch (Exception e) {
-                                            Log.d("NotificationReceiver", "OKX activity not found: " + activityName);
-                                            launchIntent = null;
-                                        }
-                                    }
-                                } catch (Exception e) {
-                                    Log.e("NotificationReceiver", "Error trying OKX specific activities", e);
-                                }
-                            }
-                        }
+                        launchIntent = pm.getLaunchIntentForPackage(appToOpen);
+                        Log.d("NotificationReceiver", "Predefined app getLaunchIntentForPackage: " + (launchIntent != null ? "SUCCESS" : "null"));
                     } catch (Exception e) {
-                        Log.e("NotificationReceiver", "Error getting launch intent for package: " + customPackage, e);
+                        Log.e("NotificationReceiver", "Error getting launch intent for predefined app: " + e.getMessage(), e);
                         launchIntent = null;
                     }
                 }
                 
                 if (launchIntent != null) {
-                    Log.i("NotificationReceiver", "✅ Successfully prepared launch intent for package: " + customPackage);
+                    Log.i("NotificationReceiver", "✅ Successfully prepared launch intent");
                     Log.i("NotificationReceiver", "   Intent details: " + launchIntent.toString());
                     appIntent = launchIntent;
                 } else {
                     if (triedCustom) {
-                        Log.w("NotificationReceiver", "❌ Could not launch custom package: " + customPackage + ". Falling back to MainActivity.");
-                        android.widget.Toast.makeText(context, "Could not open app: " + customPackage, android.widget.Toast.LENGTH_LONG).show();
+                        Log.w("NotificationReceiver", "⚠️ Could not launch app from click handler - will attempt via PendingIntent approach next time.");
                     }
                     // Fallback: open MainActivity (default behavior)
                     appIntent = new Intent(context, MainActivity.class);
@@ -195,80 +137,58 @@ public class NotificationReceiver extends BroadcastReceiver {
         // Build notification - use system defaults for sound and vibration
         android.content.SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         boolean onlyNotificationsMode = prefs.getBoolean("only_notifications", false);
-        PendingIntent contentIntent;
+        PendingIntent contentIntent = null;
         if (onlyNotificationsMode) {
-            // Get the custom package to open
-            String customPackage = prefs.getString("app_to_open", "");
-            Log.d("NotificationReceiver", "Building notification PendingIntent - onlyNotificationsMode=true, customPackage='" + customPackage + "'");
+            // Check if custom app is configured
+            String appToOpen = prefs.getString("app_to_open", "");
+            Log.d("NotificationReceiver", "Building notification PendingIntent - onlyNotificationsMode=true, appToOpen='" + appToOpen + "'");
             
-            if (customPackage != null && !customPackage.trim().isEmpty()) {
-                // Create a PendingIntent that directly launches the wallet app
+            Intent launchIntent = null;
+            
+            if ("custom".equals(appToOpen)) {
+                // Custom app with explicit package and activity
+                String customPackage = prefs.getString("custom_package_name", "");
+                String customActivity = prefs.getString("custom_activity_name", "");
+                Log.d("NotificationReceiver", "Custom app - package: '" + customPackage + "', activity: '" + customActivity + "'");
+                
+                if (!customPackage.isEmpty() && !customActivity.isEmpty()) {
+                    try {
+                        launchIntent = new Intent();
+                        launchIntent.setClassName(customPackage, customActivity);
+                        launchIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                        Log.d("NotificationReceiver", "✅ Created PendingIntent for custom app: " + customPackage + "/" + customActivity);
+                    } catch (Exception e) {
+                        Log.e("NotificationReceiver", "❌ Error creating PendingIntent for custom app: " + e.getMessage(), e);
+                        launchIntent = null;
+                    }
+                }
+            } else if (appToOpen != null && !appToOpen.trim().isEmpty()) {
+                // Predefined app - try to get launch intent
                 try {
                     android.content.pm.PackageManager pm = context.getPackageManager();
-                    Intent walletIntent = pm.getLaunchIntentForPackage(customPackage);
-                    
-                    if (walletIntent == null) {
-                        // Try MAIN/LAUNCHER
-                        Intent mainIntent = new Intent(Intent.ACTION_MAIN);
-                        mainIntent.setPackage(customPackage);
-                        mainIntent.addCategory(Intent.CATEGORY_LAUNCHER);
-                        java.util.List<android.content.pm.ResolveInfo> activities = pm.queryIntentActivities(mainIntent, 0);
-                        
-                        if (!activities.isEmpty()) {
-                            walletIntent = new Intent(Intent.ACTION_MAIN);
-                            walletIntent.setClassName(customPackage, activities.get(0).activityInfo.name);
-                            walletIntent.addCategory(Intent.CATEGORY_LAUNCHER);
-                        }
-                    }
-                    
-                    if (walletIntent != null) {
-                        walletIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                        contentIntent = PendingIntent.getActivity(
-                            context,
-                            notificationId + 10000,
-                            walletIntent,
-                            PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
-                        );
-                        Log.d("NotificationReceiver", "✅ Created PendingIntent to launch wallet app: " + customPackage);
-                    } else {
-                        Log.w("NotificationReceiver", "⚠️ Could not find launch intent for: " + customPackage + ", using MainActivity fallback");
-                        contentIntent = PendingIntent.getBroadcast(
-                            context,
-                            notificationId + 10000,
-                                new Intent(context, NotificationReceiver.class)
-                                .setAction("com.sfl.browser.ACTION_NOTIFICATION_CLICK")
-                                .putExtra("notificationId", notificationId)
-                                .putExtra("title", title)
-                                .putExtra("body", body)
-                                .putExtra("itemName", itemName)
-                                .putExtra("category", category)
-                                .putExtra("groupId", groupId)
-                                .putExtra("details", details)
-                                .putExtra("count", count),
-                            PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
-                        );
-                    }
+                    launchIntent = pm.getLaunchIntentForPackage(appToOpen);
+                    Log.d("NotificationReceiver", "Predefined app PendingIntent - getLaunchIntentForPackage: " + (launchIntent != null ? "SUCCESS" : "null"));
                 } catch (Exception e) {
-                    Log.e("NotificationReceiver", "Error creating wallet PendingIntent: " + e.getMessage(), e);
-                    // Fallback to broadcast
-                    contentIntent = PendingIntent.getBroadcast(
-                        context,
-                        notificationId + 10000,
-                            new Intent(context, NotificationReceiver.class)
-                            .setAction("com.sfl.browser.ACTION_NOTIFICATION_CLICK")
-                            .putExtra("notificationId", notificationId)
-                            .putExtra("title", title)
-                            .putExtra("body", body)
-                            .putExtra("itemName", itemName)
-                            .putExtra("category", category)
-                            .putExtra("groupId", groupId)
-                            .putExtra("details", details)
-                            .putExtra("count", count),
-                        PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
-                    );
+                    Log.e("NotificationReceiver", "Error getting PendingIntent for predefined app: " + e.getMessage(), e);
+                    launchIntent = null;
                 }
+            }
+            
+            if (launchIntent != null) {
+                contentIntent = PendingIntent.getActivity(
+                    context,
+                    notificationId + 10000,
+                    launchIntent,
+                    PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+                );
+                Log.d("NotificationReceiver", "✅ PendingIntent created successfully");
             } else {
-                // No custom package, use MainActivity
+                Log.e("NotificationReceiver", "❌ Could not create valid intent for app");
+            }
+            
+            // If contentIntent is still null, use broadcast fallback
+            if (contentIntent == null) {
+                Log.w("NotificationReceiver", "⚠️ contentIntent is null, using broadcast fallback");
                 contentIntent = PendingIntent.getBroadcast(
                     context,
                     notificationId + 10000,
