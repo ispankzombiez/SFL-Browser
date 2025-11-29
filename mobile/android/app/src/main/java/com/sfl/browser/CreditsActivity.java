@@ -104,6 +104,32 @@ public class CreditsActivity extends AppCompatActivity {
         divider2.setLayoutParams(dividerParams2);
         container.addView(divider2);
         
+        // Elias contributor
+        TextView contributorElias = new TextView(this);
+        contributorElias.setTextSize(16);
+        contributorElias.setLineSpacing(1.5f, 1.5f);
+        contributorElias.setPadding(0, 0, 0, 16);
+        String contributorEliasHtml = "<p style=\"color: #e6e6e6; margin: 0 0 8px 0;\"><b style=\"color: #bfa14a;\">📚 Elias</b></p>" +
+                "<p style=\"color: #e6c97a; margin: 0 0 8px 0;\">GitHub Tutoring and Help</p>" +
+                "<p style=\"color: #e6e6e6; margin: 0;\">Farm: <a href=\"https://sunflower-land.com/play/#/visit/128727\" style=\"color: #c9b26d;\">https://sunflower-land.com/play/#/visit/128727</a></p>";
+        Spanned contributorEliasSpanned = Html.fromHtml(contributorEliasHtml, Html.FROM_HTML_MODE_LEGACY);
+        contributorElias.setText(contributorEliasSpanned);
+        contributorElias.setMovementMethod(new SunflowerLandLinkHandler(this));
+        container.addView(contributorElias);
+        
+        // Divider
+        TextView dividerElias = new TextView(this);
+        dividerElias.setHeight(2);
+        dividerElias.setBackgroundColor(android.graphics.Color.parseColor("#bfa14a"));
+        dividerElias.setPadding(0, 0, 0, 0);
+        LinearLayout.LayoutParams dividerParamsElias = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            2
+        );
+        dividerParamsElias.setMargins(0, 0, 0, 16);
+        dividerElias.setLayoutParams(dividerParamsElias);
+        container.addView(dividerElias);
+        
         // Maschs contributor
         TextView contributor2 = new TextView(this);
         contributor2.setTextSize(16);
