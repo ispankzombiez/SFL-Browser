@@ -18,6 +18,9 @@
         android:supportsRtl="true"
         android:hardwareAccelerated="true"
         android:theme="@style/AppTheme">
+        
+        <property android:name="android.app.16kb_pages_enabled" android:value="true" />
+        
         <activity
             android:name=".DiagnosticsActivity"
             android:label="Diagnostics"
