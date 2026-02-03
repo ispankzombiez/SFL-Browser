@@ -241,6 +241,8 @@ public class NotificationManagerService extends Service {
             List<FarmItem> beehives = CategoryExtractors.extractBeehives(farmObject);
             List<FarmItem> cropMachine = CategoryExtractors.extractCropMachine(farmObject);
             List<FarmItem> sunstones = CategoryExtractors.extractSunstones(farmObject);
+            List<FarmItem> crabTraps = CategoryExtractors.extractCrabTraps(farmObject);
+            List<FarmItem> shrines = CategoryExtractors.extractShrines(farmObject);
             
             // Extract daily reset if enabled in preferences
             List<FarmItem> dailyReset = new ArrayList<>();
@@ -264,6 +266,9 @@ public class NotificationManagerService extends Service {
             // Extract sick animals for health monitoring
             List<SickAnimal> sickAnimals = CategoryExtractors.extractSickAnimals(farmObject);
 
+            // Extract village projects for completion tracking
+            List<com.sfl.browser.models.VillageProject> villageProjects = CategoryExtractors.extractVillageProjects(farmObject);
+
             // Extract skill cooldown notifications
             List<FarmItem> skillCooldowns = new ArrayList<>();
             if (prefs.getBoolean("category_skill_cooldown", true) && farmObject.has("bumpkin")) {
@@ -271,7 +276,7 @@ public class NotificationManagerService extends Service {
                 skillCooldowns = SkillExtractors.extractSkillCooldowns(bumpkinObject);
             }
 
-            Log.d(TAG, "Step 2 Complete: Extracted " + crops.size() + " crop(s), " + fruits.size() + " fruit(s), " + resources.size() + " resource(s), " + animals.size() + " animal(s), " + cooking.size() + " cooking item(s), " + composters.size() + " composter(s), " + flowers.size() + " flower(s), " + craftingBox.size() + " crafting box item(s), " + beehives.size() + " beehive item(s), " + cropMachine.size() + " crop machine item(s), " + sunstones.size() + " sunstone(s), " + dailyReset.size() + " daily reset(s), " + soldListings.size() + " sold listing(s), " + floatingIsland.size() + " floating island item(s), " + sickAnimals.size() + " sick animal(s), " + skillCooldowns.size() + " skill cooldown(s)");
+            Log.d(TAG, "Step 2 Complete: Extracted " + crops.size() + " crop(s), " + fruits.size() + " fruit(s), " + resources.size() + " resource(s), " + animals.size() + " animal(s), " + cooking.size() + " cooking item(s), " + composters.size() + " composter(s), " + flowers.size() + " flower(s), " + craftingBox.size() + " crafting box item(s), " + beehives.size() + " beehive item(s), " + cropMachine.size() + " crop machine item(s), " + sunstones.size() + " sunstone(s), " + crabTraps.size() + " crab trap(s), " + shrines.size() + " shrine(s), " + dailyReset.size() + " daily reset(s), " + soldListings.size() + " sold listing(s), " + floatingIsland.size() + " floating island item(s), " + sickAnimals.size() + " sick animal(s), " + villageProjects.size() + " village project(s), " + skillCooldowns.size() + " skill cooldown(s)");
 
             // Step 3: Cluster crops, fruits, resources, animals, and cooking by category-specific rules
             Log.d(TAG, "Step 3: Clustering crops, fruits, resources, animals & cooking...");
@@ -344,6 +349,26 @@ public class NotificationManagerService extends Service {
             List<NotificationGroup> sunstoneGroups = sunstoneClusterer.cluster(sunstones);
             allGroups.addAll(sunstoneGroups);
             Log.d(TAG, "  Sunstones: Created " + sunstoneGroups.size() + " group(s)");
+
+            CategoryClusterer crabTrapClusterer = ClustererFactory.getClusterer("crab_traps", this);
+            List<NotificationGroup> crabTrapGroups = crabTrapClusterer.cluster(crabTraps);
+            boolean crabTrapsEnabled = prefs.getBoolean("category_crab_traps", true);
+            if (crabTrapsEnabled) {
+                allGroups.addAll(crabTrapGroups);
+                Log.d(TAG, "  Crab Traps: Created " + crabTrapGroups.size() + " group(s)");
+            } else {
+                Log.d(TAG, "  Crab Traps: Notifications disabled - skipping " + crabTrapGroups.size() + " group(s)");
+            }
+
+            CategoryClusterer shrineClusterer = ClustererFactory.getClusterer("shrines", this);
+            List<NotificationGroup> shrineGroups = shrineClusterer.cluster(shrines);
+            boolean shrinesEnabled = prefs.getBoolean("category_shrines", true);
+            if (shrinesEnabled) {
+                allGroups.addAll(shrineGroups);
+                Log.d(TAG, "  Shrines: Created " + shrineGroups.size() + " group(s)");
+            } else {
+                Log.d(TAG, "  Shrines: Notifications disabled - skipping " + shrineGroups.size() + " group(s)");
+            }
             
             CategoryClusterer dailyResetClusterer = ClustererFactory.getClusterer("dailyReset", this);
             List<NotificationGroup> dailyResetGroups = dailyResetClusterer.cluster(dailyReset);
@@ -388,16 +413,37 @@ public class NotificationManagerService extends Service {
                 Log.d(TAG, "  Sick Animals: Notifications disabled");
             }
             
+            // Handle village project completion notifications with state tracking
+            if (prefs.getBoolean("category_village_projects", true)) {
+                VillageProjectTracker projectTracker = new VillageProjectTracker(this);
+                List<com.sfl.browser.models.VillageProject> newlyCompletedProjects = projectTracker.getNewlyCompletedProjects(villageProjects);
+                
+                if (!newlyCompletedProjects.isEmpty()) {
+                    NotificationGroup projectGroup = VillageProjectNotificationExtractor.createVillageProjectNotification(newlyCompletedProjects);
+                    if (projectGroup != null) {
+                        allGroups.add(projectGroup);
+                        Log.d(TAG, "  Village Projects: Created 1 group with " + newlyCompletedProjects.size() + " newly completed project(s)");
+                    }
+                } else {
+                    Log.d(TAG, "  Village Projects: No newly completed projects detected");
+                }
+                
+                // Always update the tracker with current state for next run
+                projectTracker.saveCurrentState(villageProjects);
+            } else {
+                Log.d(TAG, "  Village Projects: Notifications disabled");
+            }
+            
             Log.d(TAG, "Step 3 Complete: Created " + allGroups.size() + " total notification group(s)");
 
             // Step 4: Write processing log
             Log.d(TAG, "Step 4: Writing processing log...");
-            writeProcessingLog(crops, fruits, greenhouseCrops, resources, animals, cooking, composters, flowers, craftingBox, beehives, cropMachine, sunstones, dailyReset, floatingIsland);
+            writeProcessingLog(crops, fruits, greenhouseCrops, resources, animals, cooking, composters, flowers, craftingBox, beehives, cropMachine, sunstones, crabTraps, shrines, dailyReset, floatingIsland);
             Log.d(TAG, "Step 4 Complete: Processing log written");
 
             // Step 5: Save processed JSON
             Log.d(TAG, "Step 5: Saving processed JSON...");
-            saveProcessedJSON(crops, fruits, resources, animals, cooking, composters, flowers, craftingBox, beehives, cropMachine, sunstones, dailyReset);
+            saveProcessedJSON(crops, fruits, resources, animals, cooking, composters, flowers, craftingBox, beehives, cropMachine, sunstones, crabTraps, shrines, dailyReset);
             Log.d(TAG, "Step 5 Complete: Processed JSON saved");
 
             // Step 6: Schedule AlarmManager intents for system-managed notifications
@@ -451,7 +497,7 @@ public class NotificationManagerService extends Service {
     /**
      * Writes processing log with summary of extracted items
      */
-    private void writeProcessingLog(List<FarmItem> crops, List<FarmItem> fruits, List<FarmItem> greenhouseCrops, List<FarmItem> resources, List<FarmItem> animals, List<FarmItem> cooking, List<FarmItem> composters, List<FarmItem> flowers, List<FarmItem> craftingBox, List<FarmItem> beehives, List<FarmItem> cropMachine, List<FarmItem> sunstones, List<FarmItem> dailyReset, List<FarmItem> floatingIsland) {
+    private void writeProcessingLog(List<FarmItem> crops, List<FarmItem> fruits, List<FarmItem> greenhouseCrops, List<FarmItem> resources, List<FarmItem> animals, List<FarmItem> cooking, List<FarmItem> composters, List<FarmItem> flowers, List<FarmItem> craftingBox, List<FarmItem> beehives, List<FarmItem> cropMachine, List<FarmItem> sunstones, List<FarmItem> crabTraps, List<FarmItem> shrines, List<FarmItem> dailyReset, List<FarmItem> floatingIsland) {
                         // Log extraction and processing of Crimstone and Oil
                         int crimstoneCount = 0;
                         int oilCount = 0;
@@ -703,6 +749,40 @@ public class NotificationManagerService extends Service {
                     writer.write("\n");
                 }
 
+                // Write crab traps summary
+                if (crabTraps.isEmpty()) {
+                    writer.write("Crab Traps: No crab traps found\n");
+                } else {
+                    StringBuilder crabTrapLine = new StringBuilder("Crab Traps: ");
+                    for (int i = 0; i < crabTraps.size(); i++) {
+                        FarmItem item = crabTraps.get(i);
+                        String formattedTime = CategoryExtractors.formatTimestamp(item.getTimestamp());
+                        crabTrapLine.append("1 Crab trap [").append(formattedTime).append("]");
+                        if (i < crabTraps.size() - 1) {
+                            crabTrapLine.append(", ");
+                        }
+                    }
+                    writer.write(crabTrapLine.toString());
+                    writer.write("\n");
+                }
+
+                // Write shrines summary
+                if (shrines.isEmpty()) {
+                    writer.write("Shrines: No shrines found\n");
+                } else {
+                    StringBuilder shrinesLine = new StringBuilder("Shrines: ");
+                    for (int i = 0; i < shrines.size(); i++) {
+                        FarmItem item = shrines.get(i);
+                        String formattedTime = CategoryExtractors.formatTimestamp(item.getTimestamp());
+                        shrinesLine.append(item.getName()).append(" [").append(formattedTime).append("]");
+                        if (i < shrines.size() - 1) {
+                            shrinesLine.append(", ");
+                        }
+                    }
+                    writer.write(shrinesLine.toString());
+                    writer.write("\n");
+                }
+
                 // Write daily reset summary
                 if (dailyReset.isEmpty()) {
                     writer.write("Daily Reset: No reset scheduled\n");
@@ -747,9 +827,12 @@ public class NotificationManagerService extends Service {
     }
 
     /**
+     * Write clustering and allGroups debug information to processing log
+     */
+    /**
      * Saves processed items as JSON (chronologically ordered, earliest first)
      */
-    private void saveProcessedJSON(List<FarmItem> crops, List<FarmItem> fruits, List<FarmItem> resources, List<FarmItem> animals, List<FarmItem> cooking, List<FarmItem> composters, List<FarmItem> flowers, List<FarmItem> craftingBox, List<FarmItem> beehives, List<FarmItem> cropMachine, List<FarmItem> sunstones, List<FarmItem> dailyReset) {
+    private void saveProcessedJSON(List<FarmItem> crops, List<FarmItem> fruits, List<FarmItem> resources, List<FarmItem> animals, List<FarmItem> cooking, List<FarmItem> composters, List<FarmItem> flowers, List<FarmItem> craftingBox, List<FarmItem> beehives, List<FarmItem> cropMachine, List<FarmItem> sunstones, List<FarmItem> crabTraps, List<FarmItem> shrines, List<FarmItem> dailyReset) {
         try {
             File file = new File(getFilesDir(), "future_notifications.json");
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(file, false))) {
@@ -766,6 +849,8 @@ public class NotificationManagerService extends Service {
                 allItems.addAll(beehives);
                 allItems.addAll(cropMachine);
                 allItems.addAll(sunstones);
+                allItems.addAll(crabTraps);
+                allItems.addAll(shrines);
                 allItems.addAll(dailyReset);
                 
                 // Sort by timestamp

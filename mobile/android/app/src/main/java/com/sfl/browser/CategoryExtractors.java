@@ -6,6 +6,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.sfl.browser.models.FarmItem;
 import com.sfl.browser.models.SickAnimal;
+import com.sfl.browser.models.VillageProject;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -917,7 +918,7 @@ public class CategoryExtractors {
             
             // List of all cooking building types
             String[] cookingBuildings = {
-                "Fire Pit", "Bakery", "Kitchen", "Deli", "Smoothie Shack"
+                "Fire Pit", "Bakery", "Kitchen", "Deli", "Smoothie Shack", "Fish Market"
             };
             
             long currentTime = System.currentTimeMillis();
@@ -936,12 +937,17 @@ public class CategoryExtractors {
                         try {
                             JsonObject building = buildingElement.getAsJsonObject();
                             
-                            // Check if building has crafting array
-                            if (!building.has("crafting") || building.get("crafting").isJsonNull()) {
-                                continue;
+                            // Check if building has crafting array (Fish Market uses "processing")
+                            JsonArray craftingArray = null;
+                            if (building.has("crafting") && !building.get("crafting").isJsonNull()) {
+                                craftingArray = building.getAsJsonArray("crafting");
+                            } else if ("Fish Market".equals(buildingType) && building.has("processing") && !building.get("processing").isJsonNull()) {
+                                craftingArray = building.getAsJsonArray("processing");
                             }
                             
-                            JsonArray craftingArray = building.getAsJsonArray("crafting");
+                            if (craftingArray == null) {
+                                continue;
+                            }
                             
                             // Each crafting item in the array
                             for (JsonElement craftingElement : craftingArray) {
@@ -1467,6 +1473,148 @@ public class CategoryExtractors {
     }
 
     /**
+     * Extracts crab trap ready notifications - each trap spot has waterTrap.readyAt
+     * Structure: farm.crabTraps.trapSpots.{id}.waterTrap.readyAt
+     */
+    public static List<FarmItem> extractCrabTraps(JsonObject farmObject) {
+        Log.d(TAG, "Extracting crab traps...");
+        List<FarmItem> items = new ArrayList<>();
+
+        try {
+            if (farmObject == null) {
+                Log.d(TAG, "Farm object is null");
+                return items;
+            }
+
+            // Check farm.crabTraps directly (primary path)
+            if (!farmObject.has("crabTraps") || farmObject.get("crabTraps").isJsonNull()) {
+                Log.d(TAG, "No crabTraps found in farm data");
+                return items;
+            }
+
+            JsonObject crabTraps = farmObject.getAsJsonObject("crabTraps");
+            if (!crabTraps.has("trapSpots")) {
+                Log.d(TAG, "No trapSpots found in crabTraps");
+                return items;
+            }
+
+            JsonObject trapSpots = crabTraps.getAsJsonObject("trapSpots");
+            Log.d(TAG, "Found " + trapSpots.size() + " crab trap spot(s) total");
+            long currentTime = System.currentTimeMillis();
+            Log.d(TAG, "Current time: " + formatTimestamp(currentTime));
+
+            for (String spotId : trapSpots.keySet()) {
+                try {
+                    JsonObject spot = trapSpots.getAsJsonObject(spotId);
+                    if (!spot.has("waterTrap") || spot.get("waterTrap").isJsonNull()) {
+                        continue;
+                    }
+
+                    JsonObject waterTrap = spot.getAsJsonObject("waterTrap");
+                    if (!waterTrap.has("readyAt") || waterTrap.get("readyAt").isJsonNull()) {
+                        continue;
+                    }
+
+                    long readyAt = waterTrap.get("readyAt").getAsLong();
+                    if (readyAt < 100000000000L) {
+                        readyAt = readyAt * 1000;
+                    }
+
+                    if (readyAt <= currentTime) {
+                        Log.d(TAG, "Skipping crab trap spot " + spotId + " - already ready/past");
+                        continue;
+                    }
+
+                    FarmItem item = new FarmItem("crab_traps", "Crab trap", 1, readyAt);
+                    item.setId(spotId);
+                    items.add(item);
+                    Log.d(TAG, "Added crab trap spot " + spotId + " ready at " + formatTimestamp(readyAt));
+                } catch (Exception e) {
+                    Log.w(TAG, "Error processing crab trap spot " + spotId + ": " + e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error extracting crab traps: " + e.getMessage(), e);
+        }
+
+        sortByTimestamp(items);
+        Log.d(TAG, "Extracted " + items.size() + " crab trap(s)");
+        return items;
+    }
+
+    /**
+     * Extracts shrine expiration notifications - expiration = createdAt + duration
+     * Structure: farm.collectibles.{Shrine Name}[].createdAt
+     */
+    public static List<FarmItem> extractShrines(JsonObject farmObject) {
+        Log.d(TAG, "Extracting shrines...");
+        List<FarmItem> items = new ArrayList<>();
+
+        try {
+            if (farmObject == null) {
+                Log.d(TAG, "Farm object is null");
+                return items;
+            }
+
+            // Check farm.collectibles directly (primary path)
+            if (!farmObject.has("collectibles") || farmObject.get("collectibles").isJsonNull()) {
+                Log.d(TAG, "No collectibles found in farm data");
+                return items;
+            }
+
+            JsonObject collectibles = farmObject.getAsJsonObject("collectibles");
+            long currentTime = System.currentTimeMillis();
+            Log.d(TAG, "Current time: " + formatTimestamp(currentTime));
+            int totalShrinesFound = 0;
+
+            for (Map.Entry<String, Long> entry : Constants.SHRINE_DURATIONS.entrySet()) {
+                String shrineName = entry.getKey();
+                long durationMs = entry.getValue();
+
+                if (!collectibles.has(shrineName) || collectibles.get(shrineName).isJsonNull()) {
+                    continue;
+                }
+
+                JsonArray shrineInstances = collectibles.getAsJsonArray(shrineName);
+                totalShrinesFound += shrineInstances.size();
+                Log.d(TAG, "Found " + shrineInstances.size() + " instance(s) of " + shrineName);
+                for (int i = 0; i < shrineInstances.size(); i++) {
+                    try {
+                        JsonObject shrine = shrineInstances.get(i).getAsJsonObject();
+                        if (!shrine.has("createdAt") || shrine.get("createdAt").isJsonNull()) {
+                            continue;
+                        }
+
+                        long createdAt = shrine.get("createdAt").getAsLong();
+                        if (createdAt < 100000000000L) {
+                            createdAt = createdAt * 1000;
+                        }
+
+                        long expiresAt = createdAt + durationMs;
+                        if (expiresAt <= currentTime) {
+                            Log.d(TAG, "Skipping shrine " + shrineName + " (expired in past)");
+                            continue;
+                        }
+
+                        FarmItem item = new FarmItem("shrines", shrineName, 1, expiresAt);
+                        items.add(item);
+                        Log.d(TAG, "Added shrine " + shrineName + " expires at " + formatTimestamp(expiresAt));
+                    } catch (Exception e) {
+                        Log.w(TAG, "Error processing shrine " + shrineName + ": " + e.getMessage());
+                    }
+                }
+            }
+            
+            sortByTimestamp(items);
+            Log.d(TAG, "Found " + totalShrinesFound + " total shrine(s), extracted " + items.size() + " with future expiration times");
+        } catch (Exception e) {
+            Log.e(TAG, "Error extracting shrines: " + e.getMessage(), e);
+        }
+
+        return items;
+    }
+
+    /**
      * Extracts Crop Machine queue items - each queued crop will be ready at readyAt
      * Groups items by crop name for notifications
      */
@@ -1653,5 +1801,73 @@ public class CategoryExtractors {
     public static List<FarmItem> extractFloatingIsland(JsonObject farmData, android.content.Context context) {
         FloatingIslandExtractor extractor = new FloatingIslandExtractor(context);
         return extractor.extractFloatingIslandNotifications(farmData);
+    }
+    
+    /**
+     * Extracts village projects for completion tracking
+     * Checks cheers count against thresholds defined in Constants
+     * 
+     * @param farmData JsonObject farm object from API response
+     * @return List<VillageProject> with project name, cheers, threshold, and completion status
+     */
+    public static List<com.sfl.browser.models.VillageProject> extractVillageProjects(JsonObject farmData) {
+        DebugLog.log("🏘️ Village Projects: Extracting project states for completion tracking...");
+        List<com.sfl.browser.models.VillageProject> villageProjects = new ArrayList<>();
+
+        if (farmData == null) {
+            DebugLog.log("🏘️ Village Projects: farmData is null");
+            return villageProjects;
+        }
+
+        try {
+            long currentTime = System.currentTimeMillis();
+            
+            // Navigate to socialFarming.villageProjects
+            if (farmData.has("socialFarming")) {
+                JsonObject socialFarming = farmData.getAsJsonObject("socialFarming");
+                
+                if (socialFarming.has("villageProjects")) {
+                    JsonObject projects = socialFarming.getAsJsonObject("villageProjects");
+                    DebugLog.log("🏘️ Village Projects: Found " + projects.size() + " project(s) in API");
+                    
+                    // Check each tracked project from Constants
+                    for (Map.Entry<String, Integer> entry : Constants.VILLAGE_PROJECT_THRESHOLDS.entrySet()) {
+                        String projectName = entry.getKey();
+                        int threshold = entry.getValue();
+                        
+                        // Check if this project exists in API data
+                        if (projects.has(projectName)) {
+                            JsonObject projectData = projects.getAsJsonObject(projectName);
+                            int cheers = getJsonInt(projectData, "cheers", 0);
+                            
+                            // Create VillageProject object (constructor calculates isComplete)
+                            com.sfl.browser.models.VillageProject villageProject = 
+                                new com.sfl.browser.models.VillageProject(projectName, cheers, threshold, currentTime);
+                            villageProjects.add(villageProject);
+                            
+                            DebugLog.log("  - " + projectName + ": " + cheers + "/" + threshold + " cheers (complete: " + villageProject.isComplete + ")");
+                        } else {
+                            // Project doesn't exist yet (0 cheers)
+                            com.sfl.browser.models.VillageProject villageProject = 
+                                new com.sfl.browser.models.VillageProject(projectName, 0, threshold, currentTime);
+                            villageProjects.add(villageProject);
+                            
+                            DebugLog.log("  - " + projectName + ": 0/" + threshold + " cheers (not started)");
+                        }
+                    }
+                    
+                    DebugLog.log("🏘️ Village Projects: Extracted " + villageProjects.size() + " tracked project(s)");
+                } else {
+                    DebugLog.log("🏘️ Village Projects: No villageProjects found in socialFarming");
+                }
+            } else {
+                DebugLog.log("🏘️ Village Projects: No socialFarming data found");
+            }
+            
+        } catch (Exception e) {
+            DebugLog.log("⚠️ Village Projects: Error during extraction: " + e.getMessage());
+        }
+
+        return villageProjects;
     }
 }

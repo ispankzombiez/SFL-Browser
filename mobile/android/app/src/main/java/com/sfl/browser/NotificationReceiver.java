@@ -245,6 +245,9 @@ public class NotificationReceiver extends BroadcastReceiver {
             } else if ("animal_sick".equals(category)) {
                 // Sick animal icon is always the chicken icon
                 iconItemName = "Animals just got sick!";
+            } else if ("village_projects".equals(category)) {
+                // Village project completion icon
+                iconItemName = "Village Project Complete!";
             } else {
                 iconItemName = itemName;
             }
@@ -307,6 +310,19 @@ public class NotificationReceiver extends BroadcastReceiver {
                 // Cooking notification (grouped by building) - show food items
                 notificationTitle = itemName + " is done cooking!";
                 notificationText = details;
+            } else if ("crab_traps".equals(category)) {
+                // Crab trap notification - grouped by time window
+                if (count > 1) {
+                    notificationTitle = count + " crab traps ready";
+                    notificationText = "Collect your crab traps";
+                } else {
+                    notificationTitle = "Crab trap ready";
+                    notificationText = "Collect your crab trap";
+                }
+            } else if ("shrines".equals(category)) {
+                // Shrine expiration notification
+                notificationTitle = itemName + " has expired";
+                notificationText = "Refresh your shrine";
             } else if ("crafting".equals(category)) {
                 // Crafting box notification
                 notificationTitle = itemName + " is ready!";
@@ -338,6 +354,15 @@ public class NotificationReceiver extends BroadcastReceiver {
                 // Format: "Animals just got sick!" and "{animal list with counts}"
                 notificationTitle = "Animals just got sick!";
                 notificationText = itemName; // itemName already contains the formatted list (e.g., "2 Chickens, 1 Cow")
+            } else if ("village_projects".equals(category)) {
+                // Village project completion notification
+                // Format: "Village Project Complete!" / "{count} Village Projects Complete!" and "{project list with cheers}"
+                if (count > 1) {
+                    notificationTitle = count + " Village Projects Complete!";
+                } else {
+                    notificationTitle = "Village Project Complete!";
+                }
+                notificationText = itemName; // itemName already contains the formatted list (e.g., "Big Banana (200), Expert Cooking Pot (50)")
             } else {
                 // Production/standard notification
                 notificationTitle = itemName + " is ready!";

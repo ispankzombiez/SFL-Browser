@@ -155,6 +155,41 @@ public class Constants {
         put("Blue Lotus", 5L * 24 * 60 * 60 * 1000);
         put("Primula Enigma", 5L * 24 * 60 * 60 * 1000);
     }};
+
+    /**
+     * Shrine duration times in milliseconds
+     */
+    public static final Map<String, Long> SHRINE_DURATIONS = new HashMap<String, Long>() {{
+        put("Boar Shrine", 7L * 24 * 60 * 60 * 1000);
+        put("Hound Shrine", 7L * 24 * 60 * 60 * 1000);
+        put("Sparrow Shrine", 7L * 24 * 60 * 60 * 1000);
+        put("Fox Shrine", 7L * 24 * 60 * 60 * 1000);
+        put("Toucan Shrine", 7L * 24 * 60 * 60 * 1000);
+        put("Collie Shrine", 7L * 24 * 60 * 60 * 1000);
+        put("Moth Shrine", 7L * 24 * 60 * 60 * 1000);
+        put("Badger Shrine", 7L * 24 * 60 * 60 * 1000);
+        put("Mole Shrine", 7L * 24 * 60 * 60 * 1000);
+        put("Tortoise Shrine", 7L * 24 * 60 * 60 * 1000);
+        put("Stag Shrine", 7L * 24 * 60 * 60 * 1000);
+        put("Bear Shrine", 7L * 24 * 60 * 60 * 1000);
+        put("Bantam Shrine", 7L * 24 * 60 * 60 * 1000);
+        put("Legendary Shrine", 1L * 24 * 60 * 60 * 1000);
+        put("Trading Shrine", 30L * 24 * 60 * 60 * 1000);
+        put("Obsidian Shrine", 14L * 24 * 60 * 60 * 1000);
+    }};
+    
+    /**
+     * Village project cheer thresholds for completion notifications
+     * Fires immediately when cheers >= threshold
+     */
+    public static final Map<String, Integer> VILLAGE_PROJECT_THRESHOLDS = new HashMap<String, Integer>() {{
+        put("Big Banana", 200);
+        put("Big Apple", 50);
+        put("Big Orange", 25);
+        put("Advanced Cooking Pot", 100);
+        put("Expert Cooking Pot", 50);
+        put("Basic Cooking Pot", 10);
+    }};
     
     /**
      * Cooking times in milliseconds

@@ -161,6 +161,30 @@
             android:summary="Get notified when crop machine items are ready"
             android:defaultValue="true" />
 
+        <SwitchPreferenceCompat
+            android:key="category_crab_traps"
+            android:title="Crab Traps"
+            android:summary="Get notified when crab traps are ready"
+            android:defaultValue="true" />
+
+        <SwitchPreferenceCompat
+            android:key="category_shrines"
+            android:title="Shrines"
+            android:summary="Get notified when shrines expire"
+            android:defaultValue="true" />
+
+        <SwitchPreferenceCompat
+            android:key="category_village_projects"
+            android:title="Village Projects"
+            android:summary="Get notified when village projects reach completion threshold"
+            android:defaultValue="true" />
+
+        <SwitchPreferenceCompat
+            android:key="category_animal_sick"
+            android:title="Sick Animals"
+            android:summary="Get notified when animals become sick"
+            android:defaultValue="true" />
+
         <Preference
             android:key="category_skills"
             android:title="Skills"

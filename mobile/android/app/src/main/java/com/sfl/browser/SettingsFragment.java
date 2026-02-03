@@ -444,6 +444,9 @@ public class SettingsFragment extends PreferenceFragmentCompat {
                         SharedPreferences.Editor editor = prefs.edit();
                         editor.putBoolean("category_daily_reset", true);
                         editor.putBoolean("category_crop_machine", true);
+                        editor.putBoolean("category_crab_traps", true);
+                        editor.putBoolean("category_shrines", true);
+                        editor.putBoolean("category_village_projects", true);
                         editor.putBoolean("category_crafting", true);
                         editor.putBoolean("marketplace_listings_enabled", true);
                         editor.putBoolean("floating_island_enabled", true);
@@ -589,6 +592,9 @@ public class SettingsFragment extends PreferenceFragmentCompat {
                         SharedPreferences.Editor editor = prefs.edit();
                         editor.putBoolean("category_daily_reset", false);
                         editor.putBoolean("category_crop_machine", false);
+                        editor.putBoolean("category_crab_traps", false);
+                        editor.putBoolean("category_shrines", false);
+                        editor.putBoolean("category_village_projects", false);
                         editor.putBoolean("category_crafting", false);
                         editor.putBoolean("marketplace_listings_enabled", false);
                         editor.putBoolean("floating_island_enabled", false);
