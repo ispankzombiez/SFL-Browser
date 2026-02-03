@@ -142,6 +142,8 @@ public class FarmDataProcessor {
             List<FarmItem> beehives = CategoryExtractors.extractBeehives(farmObject);
             List<FarmItem> cropMachine = CategoryExtractors.extractCropMachine(farmObject);
             List<FarmItem> sunstones = CategoryExtractors.extractSunstones(farmObject);
+            List<FarmItem> crabTraps = CategoryExtractors.extractCrabTraps(farmObject);
+            List<FarmItem> shrines = CategoryExtractors.extractShrines(farmObject);
 
             // Extract skill cooldowns if enabled
             List<FarmItem> skillCooldowns = new ArrayList<>();
@@ -204,6 +206,8 @@ public class FarmDataProcessor {
             allExtractedItems.addAll(beehives);
             allExtractedItems.addAll(cropMachine);
             allExtractedItems.addAll(sunstones);
+            allExtractedItems.addAll(crabTraps);
+            allExtractedItems.addAll(shrines);
             allExtractedItems.addAll(skillCooldowns);
             allExtractedItems.addAll(dailyReset);
             allExtractedItems.addAll(floatingIsland);
@@ -265,6 +269,40 @@ public class FarmDataProcessor {
             CategoryClusterer sunstoneClusterer = ClustererFactory.getClusterer("sunstones", context);
             List<NotificationGroup> sunstoneGroups = sunstoneClusterer.cluster(sunstones);
             allGroups.addAll(sunstoneGroups);
+
+            // Cluster crab traps with debug logging
+            CategoryClusterer crabTrapClusterer = ClustererFactory.getClusterer("crab_traps", context);
+            List<NotificationGroup> crabTrapGroups = crabTrapClusterer.cluster(crabTraps);
+            DebugLog.log("[DEBUG] Crab Traps: Extracted " + crabTraps.size() + " items, created " + crabTrapGroups.size() + " group(s)");
+            for (int i = 0; i < crabTrapGroups.size(); i++) {
+                NotificationGroup g = crabTrapGroups.get(i);
+                DebugLog.log("  Group " + i + ": " + g.quantity + " " + g.name + " at " + CategoryExtractors.formatTimestamp(g.earliestReadyTime));
+            }
+            boolean crabTrapsEnabled = prefs.getBoolean("category_crab_traps", true);
+            DebugLog.log("  Toggle (category_crab_traps): " + crabTrapsEnabled);
+            if (crabTrapsEnabled) {
+                allGroups.addAll(crabTrapGroups);
+                DebugLog.log("  Added " + crabTrapGroups.size() + " crab trap group(s) to allGroups");
+            } else {
+                DebugLog.log("  Crab trap groups NOT added (toggle disabled)");
+            }
+
+            // Cluster shrines with debug logging
+            CategoryClusterer shrineClusterer = ClustererFactory.getClusterer("shrines", context);
+            List<NotificationGroup> shrineGroups = shrineClusterer.cluster(shrines);
+            DebugLog.log("[DEBUG] Shrines: Extracted " + shrines.size() + " items, created " + shrineGroups.size() + " group(s)");
+            for (int i = 0; i < shrineGroups.size(); i++) {
+                NotificationGroup g = shrineGroups.get(i);
+                DebugLog.log("  Group " + i + ": " + g.quantity + " " + g.name + " at " + CategoryExtractors.formatTimestamp(g.earliestReadyTime));
+            }
+            boolean shrinesEnabled = prefs.getBoolean("category_shrines", true);
+            DebugLog.log("  Toggle (category_shrines): " + shrinesEnabled);
+            if (shrinesEnabled) {
+                allGroups.addAll(shrineGroups);
+                DebugLog.log("  Added " + shrineGroups.size() + " shrine group(s) to allGroups");
+            } else {
+                DebugLog.log("  Shrine groups NOT added (toggle disabled)");
+            }
 
             CategoryClusterer skillCooldownClusterer = ClustererFactory.getClusterer("skill_cooldown", context);
             List<NotificationGroup> skillCooldownGroups = skillCooldownClusterer.cluster(skillCooldowns);
@@ -386,7 +424,7 @@ public class FarmDataProcessor {
             // Step 4: Save processed JSON
             Log.d(TAG, "Step 4: Saving processed data...");
             DebugLog.logStep("Step 4", "Saving processed data");
-            saveProcessedJSON(context, crops, fruits, resources, animals, cooking, composters, flowers, craftingBox, beehives, cropMachine, sunstones, dailyReset);
+            saveProcessedJSON(context, crops, fruits, resources, animals, cooking, composters, flowers, craftingBox, beehives, cropMachine, sunstones, crabTraps, shrines, dailyReset);
             Log.d(TAG, "Step 4 Complete: Processed data saved");
             DebugLog.logStep("Step 4", "Complete: Processed data saved");
 
@@ -443,7 +481,7 @@ public class FarmDataProcessor {
                                           List<FarmItem> resources, List<FarmItem> animals, List<FarmItem> cooking,
                                           List<FarmItem> composters, List<FarmItem> flowers, List<FarmItem> craftingBox,
                                           List<FarmItem> beehives, List<FarmItem> cropMachine, List<FarmItem> sunstones,
-                                          List<FarmItem> dailyReset) {
+                                          List<FarmItem> crabTraps, List<FarmItem> shrines, List<FarmItem> dailyReset) {
         try {
             Gson gson = new Gson();
             JsonObject processedData = new JsonObject();
@@ -451,6 +489,8 @@ public class FarmDataProcessor {
             processedData.add("fruits", gson.toJsonTree(fruits));
             processedData.add("resources", gson.toJsonTree(resources));
             processedData.add("animals", gson.toJsonTree(animals));
+            processedData.add("crabTraps", gson.toJsonTree(crabTraps));
+            processedData.add("shrines", gson.toJsonTree(shrines));
 
             File file = new File(context.getFilesDir(), "processed_data.json");
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {

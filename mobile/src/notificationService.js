@@ -92,6 +92,26 @@ const RESOURCE_GROWTH_TIMES = {
   'lava': 24 * 60 * 60 * 1000, // 24 hours
 };
 
+// Shrine duration times (in milliseconds)
+const SHRINE_DURATIONS = {
+  'Boar Shrine': 7 * 24 * 60 * 60 * 1000, // 7 days
+  'Hound Shrine': 7 * 24 * 60 * 60 * 1000,
+  'Sparrow Shrine': 7 * 24 * 60 * 60 * 1000,
+  'Fox Shrine': 7 * 24 * 60 * 60 * 1000,
+  'Toucan Shrine': 7 * 24 * 60 * 60 * 1000,
+  'Collie Shrine': 7 * 24 * 60 * 60 * 1000,
+  'Moth Shrine': 7 * 24 * 60 * 60 * 1000,
+  'Badger Shrine': 7 * 24 * 60 * 60 * 1000,
+  'Mole Shrine': 7 * 24 * 60 * 60 * 1000,
+  'Tortoise Shrine': 7 * 24 * 60 * 60 * 1000,
+  'Stag Shrine': 7 * 24 * 60 * 60 * 1000,
+  'Bear Shrine': 7 * 24 * 60 * 60 * 1000,
+  'Bantam Shrine': 7 * 24 * 60 * 60 * 1000,
+  'Legendary Shrine': 1 * 24 * 60 * 60 * 1000, // 1 day
+  'Trading Shrine': 30 * 24 * 60 * 60 * 1000, // 30 days
+  'Obsidian Shrine': 14 * 24 * 60 * 60 * 1000, // 14 days
+};
+
 // Time before completion to trigger notification (5 seconds in milliseconds)
 const NOTIFICATION_ADVANCE_TIME = 5 * 1000;
 
@@ -335,6 +355,81 @@ class NotificationService {
       });
     }
 
+    // Extract crab traps (when traps are ready)
+    if (farmData.farm.crabTraps && farmData.farm.crabTraps.trapSpots) {
+      console.log(`🦀 Checking ${Object.keys(farmData.farm.crabTraps.trapSpots).length} crab trap spots...`);
+      const readyCrabTraps = [];
+      Object.entries(farmData.farm.crabTraps.trapSpots).forEach(([spotId, spot]) => {
+        if (spot.waterTrap && spot.waterTrap.readyAt) {
+          const timeUntilReady = spot.waterTrap.readyAt - now;
+          console.log(`   🦀 Spot ${spotId}: ${spot.waterTrap.type || 'Crab Pot'}`);
+          console.log(`      Ready at: ${this.formatTimeInLocalTimezone(spot.waterTrap.readyAt)}`);
+          console.log(`      Time until ready: ${timeUntilReady}ms (${(timeUntilReady / 1000).toFixed(1)}s)`);
+          console.log(`      In notification window? ${timeUntilReady > 0 && timeUntilReady <= NOTIFICATION_ADVANCE_TIME ? '✅ YES' : '❌ NO'}`);
+          if (timeUntilReady > 0 && timeUntilReady <= NOTIFICATION_ADVANCE_TIME) {
+            readyCrabTraps.push({
+              spotId,
+              readyAt: spot.waterTrap.readyAt,
+              timeUntilReady,
+            });
+          }
+        }
+      });
+
+      if (readyCrabTraps.length === 1) {
+        const single = readyCrabTraps[0];
+        readyItems.push({
+          type: 'crabTrap',
+          name: 'Crab trap ready',
+          count: 1,
+          readyAt: single.readyAt,
+          timeUntilReady: single.timeUntilReady,
+          id: `crabTrap_${single.spotId}`,
+        });
+      } else if (readyCrabTraps.length > 1) {
+        const earliest = readyCrabTraps.reduce((min, item) => (item.readyAt < min.readyAt ? item : min), readyCrabTraps[0]);
+        readyItems.push({
+          type: 'crabTrap',
+          name: `${readyCrabTraps.length} crab traps ready`,
+          count: readyCrabTraps.length,
+          readyAt: earliest.readyAt,
+          timeUntilReady: earliest.timeUntilReady,
+          id: `crabTrap_group_${earliest.readyAt}`,
+        });
+      }
+    }
+
+    // Extract shrines (when they expire)
+    if (farmData.farm.collectibles) {
+      console.log(`⛩️ Checking shrines in collectibles...`);
+      Object.entries(SHRINE_DURATIONS).forEach(([shrineName, durationMs]) => {
+        const shrineInstances = farmData.farm.collectibles[shrineName];
+        if (Array.isArray(shrineInstances)) {
+          console.log(`   ⛩️ Found ${shrineInstances.length} ${shrineName} instance(s)`);
+          shrineInstances.forEach((shrine, idx) => {
+            if (shrine.createdAt) {
+              const createdAtMs = shrine.createdAt > 100000000000 ? shrine.createdAt : shrine.createdAt * 1000;
+              const expiresAt = createdAtMs + durationMs;
+              const timeUntilExpiry = expiresAt - now;
+              console.log(`      Created: ${this.formatTimeInLocalTimezone(createdAtMs)}`);
+              console.log(`      Expires: ${this.formatTimeInLocalTimezone(expiresAt)}`);
+              console.log(`      Time until expiry: ${timeUntilExpiry}ms (${(timeUntilExpiry / 1000 / 60 / 60).toFixed(1)}h)`);
+              console.log(`      In notification window? ${timeUntilExpiry > 0 && timeUntilExpiry <= NOTIFICATION_ADVANCE_TIME ? '✅ YES' : '❌ NO'}`);
+              if (timeUntilExpiry > 0 && timeUntilExpiry <= NOTIFICATION_ADVANCE_TIME) {
+                readyItems.push({
+                  type: 'shrine',
+                  name: shrineName,
+                  readyAt: expiresAt,
+                  timeUntilReady: timeUntilExpiry,
+                  id: `shrine_${shrineName}_${idx}`,
+                });
+              }
+            }
+          });
+        }
+      });
+    }
+
     return readyItems;
   }
 
@@ -345,14 +440,16 @@ class NotificationService {
       'Kitchen', 'Bakery', 'Deli', 'Smoothie Shack', 'Fire Pit',
       'Crafting Box', 'Brewery', 'Hooch House', 'Jam House',
       'Cheese House', 'Oil House', 'Potion House', 'Feed House',
-      'Turbo Composter', 'Premium Composter', 'Compost Bin'
+      'Turbo Composter', 'Premium Composter', 'Compost Bin', 'Fish Market'
     ];
 
     buildingTypes.forEach(buildingType => {
       if (farm.buildings[buildingType]) {
         farm.buildings[buildingType].forEach((building, idx) => {
-          if (building.crafting && Array.isArray(building.crafting)) {
-            building.crafting.forEach((craft, craftIdx) => {
+          // Fish Market uses 'processing' instead of 'crafting'
+          const itemArray = building.processing || building.crafting;
+          if (itemArray && Array.isArray(itemArray)) {
+            itemArray.forEach((craft, craftIdx) => {
               if (craft.readyAt) {
                 const timeUntilReady = craft.readyAt - now;
                 if (timeUntilReady > 0 && timeUntilReady <= NOTIFICATION_ADVANCE_TIME) {
@@ -627,13 +724,33 @@ class NotificationService {
       // The delay is calculated from current time
       const id = Math.floor(Math.random() * 1000000);
       
+      // Customize notification based on type
+      let title = '🌻 Farm Ready!';
+      let body = `${item.name} is ready!`;
+      let largeBody = `Your ${item.name} has completed and is ready to harvest or collect.`;
+      
+      if (item.type === 'crabTrap') {
+        title = '🦀 Crab Trap Ready!';
+        if (item.count && item.count > 1) {
+          body = `${item.count} crab traps ready`;
+          largeBody = `${item.count} crab traps are ready to collect.`;
+        } else {
+          body = 'Crab trap ready';
+          largeBody = 'Your crab trap is ready to collect.';
+        }
+      } else if (item.type === 'shrine') {
+        title = '⛩️ Shrine Expired!';
+        body = `${item.name} has expired`;
+        largeBody = `${item.name} has expired.`;
+      }
+      
       await LocalNotifications.schedule({
         notifications: [
           {
             id: id,
-            title: '🌻 Farm Ready!',
-            body: `${item.name} is ready!`,
-            largeBody: `Your ${item.name} has completed and is ready to harvest or collect.`,
+            title: title,
+            body: body,
+            largeBody: largeBody,
             schedule: {
               at: notificationTime, // Schedule for the exact time it will be ready
             },

@@ -84,6 +84,14 @@ public class ClustererFactory {
             case "skill_cooldown":
                 Log.d(TAG, "Using SkillClusterer for category: " + category);
                 return new SkillClusterer();
+
+            case "crab_traps":
+                Log.d(TAG, "Using CrabTrapClusterer for category: " + category);
+                return new CrabTrapClusterer();
+
+            case "shrines":
+                Log.d(TAG, "Using DefaultClusterer for category: " + category);
+                return new DefaultClusterer();
             
             default:
                 Log.w(TAG, "Unknown category: " + category + ", using DefaultClusterer");

@@ -988,16 +988,15 @@ public class MainActivity extends BridgeActivity {
             ws.setJavaScriptCanOpenWindowsAutomatically(true);
             ws.setMediaPlaybackRequiresUserGesture(false);
             
-            // Smart caching strategy: Cache aggressively for tabs 2 and 3
-            // Always use LOAD_CACHE_ELSE_NETWORK for tabs 2 and 3 to save bandwidth
+            // Smart caching strategy: Cache aggressively for tabs 2 and 3 when setting is enabled
             // These tabs (sfl.world and wiki) benefit from caching
             SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
             boolean aggressiveCaching = prefs.getBoolean("aggressive_caching", false);
-            ws.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
-            Log.d("MainActivity", "Tab " + tab + ": Using LOAD_CACHE_ELSE_NETWORK");
             
             if (aggressiveCaching) {
                 // In aggressive caching mode: aggressively cache content to minimize bandwidth
+                ws.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
+                Log.d("MainActivity", "Tab " + tab + ": Using LOAD_CACHE_ELSE_NETWORK (aggressive caching enabled)");
                 // Still allow network updates when the website requests them
                 ws.setBlockNetworkLoads(false);      // Allow network, but prefer cache
                 ws.setBlockNetworkImage(false);      // Allow image network requests
@@ -1005,6 +1004,8 @@ public class MainActivity extends BridgeActivity {
                 ws.setLoadsImagesAutomatically(true);
             } else {
                 // Normal mode: standard caching behavior
+                ws.setCacheMode(WebSettings.LOAD_DEFAULT);
+                Log.d("MainActivity", "Tab " + tab + ": Using LOAD_DEFAULT (normal mode)");
                 ws.setBlockNetworkLoads(false);
                 ws.setBlockNetworkImage(false); // Allow images (will be cached per server headers)
                 ws.setLoadsImagesAutomatically(true);
