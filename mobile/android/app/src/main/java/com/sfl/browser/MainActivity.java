@@ -976,6 +976,9 @@ public class MainActivity extends BridgeActivity {
             );
             wv.setLayoutParams(lp);
 
+            // Enable hardware acceleration for smooth rendering
+            wv.setLayerType(WebView.LAYER_TYPE_HARDWARE, null);
+
             WebSettings ws = wv.getSettings();
             ws.setJavaScriptEnabled(true);
             ws.setDomStorageEnabled(true);
@@ -1018,6 +1021,12 @@ public class MainActivity extends BridgeActivity {
             ws.setSupportZoom(true);
             ws.setGeolocationEnabled(true);
             
+            // Enable rendering optimizations
+            ws.setRenderPriority(WebSettings.RenderPriority.HIGH);
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                ws.setSafeBrowsingEnabled(false); // Reduce overhead
+            }
+            
             // Enable network optimization
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                 try {
@@ -1038,6 +1047,13 @@ public class MainActivity extends BridgeActivity {
                     String message = cm.message();
                     Log.d("WebView Console", String.format("[%s:%d] %s", cm.sourceId(), cm.lineNumber(), message));
                     return true;
+                }
+                
+                @Override
+                public void onProgressChanged(WebView view, int newProgress) {
+                    super.onProgressChanged(view, newProgress);
+                    // Force redraw to prevent white flashes during animations
+                    view.invalidate();
                 }
             });
 
@@ -1540,6 +1556,14 @@ public class MainActivity extends BridgeActivity {
                 ws.setLoadWithOverviewMode(true);
                 ws.setUseWideViewPort(true);
                 
+                // Enable performance optimizations for game rendering
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    ws.setSafeBrowsingEnabled(false); // Reduce overhead
+                }
+                
+                // Enable smooth rendering during panning/scrolling
+                ws.setRenderPriority(WebSettings.RenderPriority.HIGH);
+                
                 // Set User-Agent to make Google accept this as a secure browser
                 String defaultUserAgent = ws.getUserAgentString();
                 String customUserAgent = defaultUserAgent.replace("; wv", "").replace("Version/4.0 ", "");
@@ -1609,6 +1633,13 @@ public class MainActivity extends BridgeActivity {
                             Log.e("GAME_DATA", "🎮 FARM DATA: " + message);
                         }
                         return true;
+                    }
+
+                    @Override
+                    public void onProgressChanged(WebView view, int newProgress) {
+                        super.onProgressChanged(view, newProgress);
+                        // Force redraw to prevent white flashes during animations
+                        view.invalidate();
                     }
 
                     @Override
