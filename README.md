@@ -1,4 +1,4 @@
-[🌐 Visit the Project Website](https://ispankzombiez.github.io/Sunflower-Land-Unoffical-Android-App/)
+[🌐 Visit the Project Website](https://ispankzombiez.github.io/SFL-Browser/)
 
 # Sunflower Land Unofficial Android App
 
