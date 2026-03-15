@@ -1530,8 +1530,8 @@ public class MainActivity extends BridgeActivity {
                     android.view.WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED
                 );
 
-                // Set background to dark color to prevent white flashes during rendering
-                wv.setBackgroundColor(android.graphics.Color.parseColor("#1a1a1a"));
+                // Do not set background color for main tab 1 - let web view render its own content
+                // Dark background only applied to background tabs (2 & 3)
                 
                 wv.setLayerType(WebView.LAYER_TYPE_NONE, null);
 
@@ -3153,7 +3153,7 @@ public class MainActivity extends BridgeActivity {
                     );
                     cardParams.setMargins(4, 0, 4, 0);
                     cardLayout.setLayoutParams(cardParams);
-                    cardLayout.setBackgroundColor(0xFF2a2a2a);
+                    cardLayout.setBackgroundColor(0xFF000000); // Pure black to hide any white gaps
 
                     // Create container for tab preview (will hold WebView)
                     android.widget.FrameLayout previewContainer = new android.widget.FrameLayout(MainActivity.this);
@@ -3164,10 +3164,49 @@ public class MainActivity extends BridgeActivity {
                     previewContainer.setLayoutParams(previewParams);
                     previewContainer.setClipChildren(true);
                     previewContainer.setClipToPadding(true);
-                    previewContainer.setBackgroundColor(0xFF333333);
+                    previewContainer.setBackgroundColor(0xFF000000); // Pure black background
 
-                    // Display actual tab content at scaled size (not a separate WebView)
-                    if (tabWebViews[tabIndex] != null) {
+                    // For tab 1: Display a still screenshot. For tabs 2 & 3: Display live WebView
+                    if (tabNumber == 1 && tabWebViews[tabIndex] != null) {
+                        // TAB 1: Capture screenshot and display as static image
+                        WebView tab1WebView = tabWebViews[tabIndex];
+                        
+                        try {
+                            // Capture the WebView to a bitmap
+                            android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(
+                                tab1WebView.getMeasuredWidth(), 
+                                tab1WebView.getMeasuredHeight(), 
+                                android.graphics.Bitmap.Config.ARGB_8888
+                            );
+                            android.graphics.Canvas canvas = new android.graphics.Canvas(bitmap);
+                            canvas.drawColor(android.graphics.Color.BLACK);
+                            tab1WebView.draw(canvas);
+                            
+                            // Scale bitmap to fit preview
+                            android.graphics.Bitmap scaledBitmap = android.graphics.Bitmap.createScaledBitmap(
+                                bitmap,
+                                cardWidth,
+                                cardHeight,
+                                true
+                            );
+                            
+                            // Display screenshot in ImageView
+                            android.widget.ImageView screenshotView = new android.widget.ImageView(MainActivity.this);
+                            android.widget.FrameLayout.LayoutParams screenshotParams = new android.widget.FrameLayout.LayoutParams(
+                                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                                android.widget.FrameLayout.LayoutParams.MATCH_PARENT
+                            );
+                            screenshotView.setLayoutParams(screenshotParams);
+                            screenshotView.setImageBitmap(scaledBitmap);
+                            screenshotView.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
+                            previewContainer.addView(screenshotView);
+                            
+                            bitmap.recycle(); // Recycle original bitmap
+                        } catch (Exception e) {
+                            Log.e("MainActivity", "Failed to capture tab 1 screenshot: " + e.getMessage());
+                        }
+                    } else if (tabWebViews[tabIndex] != null) {
+                        // TABS 2 & 3: Display live WebView preview
                         WebView actualTabWebView = tabWebViews[tabIndex];
                         
                         // Save original dimensions
