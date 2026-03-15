@@ -77,9 +77,9 @@ public class AlarmScheduler {
                 long readyTime = group.earliestReadyTime;
                 String groupId = group.groupId;
                 
-                // For marketplace notifications, deliver immediately (they're for past sales)
+                // For marketplace and village_projects notifications, deliver immediately (event-based, not time-based)
                 // For other notifications, skip if readyTime has already passed
-                if (readyTime <= currentTime && !"marketplace".equals(group.category)) {
+                if (readyTime <= currentTime && !"marketplace".equals(group.category) && !"village_projects".equals(group.category)) {
                     Log.d(TAG, "Skipping " + group.name + " - ready time already passed");
                     continue;
                 }
@@ -91,9 +91,9 @@ public class AlarmScheduler {
                     continue;
                 }
                 
-                // For marketplace notifications, fire immediately
-                if ("marketplace".equals(group.category)) {
-                    Log.d(TAG, "Firing marketplace notification immediately: " + group.name);
+                // For marketplace and village_projects notifications, fire immediately
+                if ("marketplace".equals(group.category) || "village_projects".equals(group.category)) {
+                    Log.d(TAG, "Firing " + group.category + " notification immediately: " + group.name);
                     deliverNotificationNow(group);
                 } else {
                     // Schedule the alarm for future notifications
@@ -135,7 +135,7 @@ public class AlarmScheduler {
             intent.putExtra("groupId", group.groupId);
             intent.putExtra("details", group.details);  // Pass optional details
             
-            // Set title and body - use custom format for marketplace
+            // Set title and body - use custom format for marketplace and village_projects
             if ("marketplace".equals(group.category)) {
                 intent.putExtra("title", group.quantity + " " + group.name + " Sold!");
                 // Extract SFL value from details (format: "50 Milk for 6.9999 SFL")
@@ -147,6 +147,9 @@ public class AlarmScheduler {
                     }
                 }
                 intent.putExtra("body", sflBody);
+            } else if ("village_projects".equals(group.category)) {
+                intent.putExtra("title", "Village Project Complete!");
+                intent.putExtra("body", group.name);
             } else {
                 intent.putExtra("title", group.quantity + " " + group.name + " Ready");
                 intent.putExtra("body", "Ready to harvest/collect");
