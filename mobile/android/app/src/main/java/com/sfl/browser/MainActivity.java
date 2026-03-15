@@ -975,9 +975,12 @@ public class MainActivity extends BridgeActivity {
                     android.view.ViewGroup.LayoutParams.MATCH_PARENT
             );
             wv.setLayoutParams(lp);
+            
+            // Set background to dark color to prevent white flashes during rendering
+            wv.setBackgroundColor(android.graphics.Color.parseColor("#1a1a1a"));
 
-            // Enable hardware acceleration for smooth rendering
-            wv.setLayerType(WebView.LAYER_TYPE_HARDWARE, null);
+            // Disable hardware acceleration to prevent rendering glitches during zoom
+            wv.setLayerType(WebView.LAYER_TYPE_NONE, null);
 
             WebSettings ws = wv.getSettings();
             ws.setJavaScriptEnabled(true);
@@ -1522,12 +1525,15 @@ public class MainActivity extends BridgeActivity {
                 // Attach gesture detection to WebView
                 attachGestureHandlers(wv);
 
-                getWindow().setFlags(
-                    android.view.WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+                // Disable hardware acceleration to prevent rendering glitches during zoom
+                getWindow().clearFlags(
                     android.view.WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED
                 );
 
-                wv.setLayerType(WebView.LAYER_TYPE_HARDWARE, null);
+                // Set background to dark color to prevent white flashes during rendering
+                wv.setBackgroundColor(android.graphics.Color.parseColor("#1a1a1a"));
+                
+                wv.setLayerType(WebView.LAYER_TYPE_NONE, null);
 
                 WebSettings ws = wv.getSettings();
                 ws.setJavaScriptEnabled(true);
