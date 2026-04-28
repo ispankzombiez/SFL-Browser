@@ -11,6 +11,7 @@ An unofficial Android mobile app for [Sunflower Land](https://sunflower-land.com
 - **Multi-Wallet Support**: Connect various Ethereum wallets via WalletConnect
 - **EIP-1193 Provider**: Injected Web3 provider for dApp compatibility
 - **Native Android UI**: Optimized for mobile gaming experience
+- **Native Android Push Notifications**
 
 ## 🧪 Become a Tester!
 
