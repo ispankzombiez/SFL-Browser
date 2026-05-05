@@ -168,6 +168,18 @@
             android:defaultValue="true" />
 
         <SwitchPreferenceCompat
+            android:key="category_aging_shed"
+            android:title="Aging Shed"
+            android:summary="Get notified when aging shed rack items are ready"
+            android:defaultValue="true" />
+
+        <SwitchPreferenceCompat
+            android:key="category_salt_farm"
+            android:title="Salt Farm"
+            android:summary="Get notified when salt farm nodes are ready"
+            android:defaultValue="true" />
+
+        <SwitchPreferenceCompat
             android:key="category_shrines"
             android:title="Shrines"
             android:summary="Get notified when shrines expire"

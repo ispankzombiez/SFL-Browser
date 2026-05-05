@@ -243,6 +243,14 @@ public class NotificationManagerService extends Service {
             List<FarmItem> sunstones = CategoryExtractors.extractSunstones(farmObject);
             List<FarmItem> crabTraps = CategoryExtractors.extractCrabTraps(farmObject);
             List<FarmItem> shrines = CategoryExtractors.extractShrines(farmObject);
+            List<FarmItem> agingShed = new ArrayList<>();
+            if (prefs.getBoolean("category_aging_shed", true)) {
+                agingShed = CategoryExtractors.extractAgingShed(farmObject);
+            }
+            List<FarmItem> saltFarm = new ArrayList<>();
+            if (prefs.getBoolean("category_salt_farm", true)) {
+                saltFarm = CategoryExtractors.extractSaltFarm(farmObject);
+            }
             
             // Extract daily reset if enabled in preferences
             List<FarmItem> dailyReset = new ArrayList<>();
@@ -276,7 +284,7 @@ public class NotificationManagerService extends Service {
                 skillCooldowns = SkillExtractors.extractSkillCooldowns(bumpkinObject);
             }
 
-            Log.d(TAG, "Step 2 Complete: Extracted " + crops.size() + " crop(s), " + fruits.size() + " fruit(s), " + resources.size() + " resource(s), " + animals.size() + " animal(s), " + cooking.size() + " cooking item(s), " + composters.size() + " composter(s), " + flowers.size() + " flower(s), " + craftingBox.size() + " crafting box item(s), " + beehives.size() + " beehive item(s), " + cropMachine.size() + " crop machine item(s), " + sunstones.size() + " sunstone(s), " + crabTraps.size() + " crab trap(s), " + shrines.size() + " shrine(s), " + dailyReset.size() + " daily reset(s), " + soldListings.size() + " sold listing(s), " + floatingIsland.size() + " floating island item(s), " + sickAnimals.size() + " sick animal(s), " + villageProjects.size() + " village project(s), " + skillCooldowns.size() + " skill cooldown(s)");
+            Log.d(TAG, "Step 2 Complete: Extracted " + crops.size() + " crop(s), " + fruits.size() + " fruit(s), " + resources.size() + " resource(s), " + animals.size() + " animal(s), " + cooking.size() + " cooking item(s), " + composters.size() + " composter(s), " + flowers.size() + " flower(s), " + craftingBox.size() + " crafting box item(s), " + beehives.size() + " beehive item(s), " + cropMachine.size() + " crop machine item(s), " + sunstones.size() + " sunstone(s), " + crabTraps.size() + " crab trap(s), " + shrines.size() + " shrine(s), " + agingShed.size() + " aging shed item(s), " + saltFarm.size() + " salt farm node(s), " + dailyReset.size() + " daily reset(s), " + soldListings.size() + " sold listing(s), " + floatingIsland.size() + " floating island item(s), " + sickAnimals.size() + " sick animal(s), " + villageProjects.size() + " village project(s), " + skillCooldowns.size() + " skill cooldown(s)");
 
             // Step 3: Cluster crops, fruits, resources, animals, and cooking by category-specific rules
             Log.d(TAG, "Step 3: Clustering crops, fruits, resources, animals & cooking...");
@@ -368,6 +376,26 @@ public class NotificationManagerService extends Service {
                 Log.d(TAG, "  Shrines: Created " + shrineGroups.size() + " group(s)");
             } else {
                 Log.d(TAG, "  Shrines: Notifications disabled - skipping " + shrineGroups.size() + " group(s)");
+            }
+
+            CategoryClusterer agingShedClusterer = ClustererFactory.getClusterer("aging_shed", this);
+            List<NotificationGroup> agingShedGroups = agingShedClusterer.cluster(agingShed);
+            boolean agingShedEnabled = prefs.getBoolean("category_aging_shed", true);
+            if (agingShedEnabled) {
+                allGroups.addAll(agingShedGroups);
+                Log.d(TAG, "  Aging Shed: Created " + agingShedGroups.size() + " group(s)");
+            } else {
+                Log.d(TAG, "  Aging Shed: Notifications disabled - skipping " + agingShedGroups.size() + " group(s)");
+            }
+
+            CategoryClusterer saltFarmClusterer = ClustererFactory.getClusterer("salt_farm", this);
+            List<NotificationGroup> saltFarmGroups = saltFarmClusterer.cluster(saltFarm);
+            boolean saltFarmEnabled = prefs.getBoolean("category_salt_farm", true);
+            if (saltFarmEnabled) {
+                allGroups.addAll(saltFarmGroups);
+                Log.d(TAG, "  Salt Farm: Created " + saltFarmGroups.size() + " group(s)");
+            } else {
+                Log.d(TAG, "  Salt Farm: Notifications disabled - skipping " + saltFarmGroups.size() + " group(s)");
             }
             
             CategoryClusterer dailyResetClusterer = ClustererFactory.getClusterer("dailyReset", this);

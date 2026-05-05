@@ -133,13 +133,20 @@ class NotificationInterceptor {
       });
     }
 
-    // Check animals
-    if (farmData.farm.animals) {
-      Object.entries(farmData.farm.animals).forEach(([key, animal]) => {
-        const item = this.checkAnimalReadiness(animal, key, now);
-        if (item) readyItems.push(item);
-      });
-    }
+    // Check animals from all known API shapes
+    const animalSources = [
+      { source: farmData.farm, prefix: 'farm' },
+      { source: farmData.farm.henHouse, prefix: 'henhouse' },
+      { source: farmData.farm.barn, prefix: 'barn' },
+    ];
+    animalSources.forEach(({ source, prefix }) => {
+      if (source && source.animals) {
+        Object.entries(source.animals).forEach(([key, animal]) => {
+          const item = this.checkAnimalReadiness(animal, `${prefix}_${key}`, now);
+          if (item) readyItems.push(item);
+        });
+      }
+    });
 
     // Check resource nodes
     if (farmData.farm.trees) {
@@ -161,7 +168,7 @@ class NotificationInterceptor {
     resourceTypes.forEach(type => {
       if (farmData.farm[type]) {
         Object.entries(farmData.farm[type]).forEach(([key, resource]) => {
-          const item = this.checkResourceReadiness(resource, type.replace('s$', ''), key, now);
+          const item = this.checkResourceReadiness(resource, type.replace(/s$/, ''), key, now);
           if (item) readyItems.push(item);
         });
       }

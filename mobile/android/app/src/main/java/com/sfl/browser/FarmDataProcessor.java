@@ -145,6 +145,18 @@ public class FarmDataProcessor {
             List<FarmItem> crabTraps = CategoryExtractors.extractCrabTraps(farmObject);
             List<FarmItem> shrines = CategoryExtractors.extractShrines(farmObject);
 
+            // Extract aging shed if enabled
+            List<FarmItem> agingShed = new ArrayList<>();
+            if (prefs.getBoolean("category_aging_shed", true)) {
+                agingShed = CategoryExtractors.extractAgingShed(farmObject);
+            }
+
+            // Extract salt farm if enabled
+            List<FarmItem> saltFarm = new ArrayList<>();
+            if (prefs.getBoolean("category_salt_farm", true)) {
+                saltFarm = CategoryExtractors.extractSaltFarm(farmObject);
+            }
+
             // Extract skill cooldowns if enabled
             List<FarmItem> skillCooldowns = new ArrayList<>();
             if (prefs.getBoolean("category_skill_cooldown", true)) {
@@ -208,6 +220,8 @@ public class FarmDataProcessor {
             allExtractedItems.addAll(sunstones);
             allExtractedItems.addAll(crabTraps);
             allExtractedItems.addAll(shrines);
+            allExtractedItems.addAll(agingShed);
+            allExtractedItems.addAll(saltFarm);
             allExtractedItems.addAll(skillCooldowns);
             allExtractedItems.addAll(dailyReset);
             allExtractedItems.addAll(floatingIsland);
@@ -302,6 +316,38 @@ public class FarmDataProcessor {
                 DebugLog.log("  Added " + shrineGroups.size() + " shrine group(s) to allGroups");
             } else {
                 DebugLog.log("  Shrine groups NOT added (toggle disabled)");
+            }
+
+            CategoryClusterer agingShedClusterer = ClustererFactory.getClusterer("aging_shed", context);
+            List<NotificationGroup> agingShedGroups = agingShedClusterer.cluster(agingShed);
+            DebugLog.log("[DEBUG] Aging Shed: Extracted " + agingShed.size() + " items, created " + agingShedGroups.size() + " group(s)");
+            for (int i = 0; i < agingShedGroups.size(); i++) {
+                NotificationGroup g = agingShedGroups.get(i);
+                DebugLog.log("  Group " + i + ": " + g.quantity + " " + g.name + " at " + CategoryExtractors.formatTimestamp(g.earliestReadyTime));
+            }
+            boolean agingShedEnabled = prefs.getBoolean("category_aging_shed", true);
+            DebugLog.log("  Toggle (category_aging_shed): " + agingShedEnabled);
+            if (agingShedEnabled) {
+                allGroups.addAll(agingShedGroups);
+                DebugLog.log("  Added " + agingShedGroups.size() + " aging shed group(s) to allGroups");
+            } else {
+                DebugLog.log("  Aging shed groups NOT added (toggle disabled)");
+            }
+
+            CategoryClusterer saltFarmClusterer = ClustererFactory.getClusterer("salt_farm", context);
+            List<NotificationGroup> saltFarmGroups = saltFarmClusterer.cluster(saltFarm);
+            DebugLog.log("[DEBUG] Salt Farm: Extracted " + saltFarm.size() + " items, created " + saltFarmGroups.size() + " group(s)");
+            for (int i = 0; i < saltFarmGroups.size(); i++) {
+                NotificationGroup g = saltFarmGroups.get(i);
+                DebugLog.log("  Group " + i + ": " + g.quantity + " " + g.name + " at " + CategoryExtractors.formatTimestamp(g.earliestReadyTime));
+            }
+            boolean saltFarmEnabled = prefs.getBoolean("category_salt_farm", true);
+            DebugLog.log("  Toggle (category_salt_farm): " + saltFarmEnabled);
+            if (saltFarmEnabled) {
+                allGroups.addAll(saltFarmGroups);
+                DebugLog.log("  Added " + saltFarmGroups.size() + " salt farm group(s) to allGroups");
+            } else {
+                DebugLog.log("  Salt farm groups NOT added (toggle disabled)");
             }
 
             CategoryClusterer skillCooldownClusterer = ClustererFactory.getClusterer("skill_cooldown", context);

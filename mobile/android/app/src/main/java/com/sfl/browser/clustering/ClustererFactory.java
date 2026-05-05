@@ -89,6 +89,14 @@ public class ClustererFactory {
                 Log.d(TAG, "Using CrabTrapClusterer for category: " + category);
                 return new CrabTrapClusterer();
 
+            case "aging_shed":
+                Log.d(TAG, "Using AgingShedClusterer for category: " + category);
+                return new AgingShedClusterer();
+
+            case "salt_farm":
+                Log.d(TAG, "Using SaltFarmClusterer for category: " + category);
+                return new SaltFarmClusterer();
+
             case "shrines":
                 Log.d(TAG, "Using DefaultClusterer for category: " + category);
                 return new DefaultClusterer();

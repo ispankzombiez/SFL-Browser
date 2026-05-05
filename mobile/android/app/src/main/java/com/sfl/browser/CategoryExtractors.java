@@ -1870,4 +1870,176 @@ public class CategoryExtractors {
 
         return villageProjects;
     }
+
+    /**
+     * Extracts aging shed notifications.
+     * Structure:
+     *   farm.agingShed.racks.aging[]        -> { id, fish, startedAt, readyAt, skills }
+     *   farm.agingShed.racks.fermentation[] -> { id, recipe, startedAt, readyAt, skills }
+     *   farm.agingShed.racks.spice[]        -> { id, recipe, startedAt, readyAt, skills }
+     */
+    public static List<FarmItem> extractAgingShed(JsonObject farmObject) {
+        Log.d(TAG, "Extracting aging shed...");
+        List<FarmItem> items = new ArrayList<>();
+
+        try {
+            if (farmObject == null) {
+                Log.d(TAG, "Farm object is null");
+                return items;
+            }
+
+            if (!farmObject.has("agingShed") || farmObject.get("agingShed").isJsonNull()) {
+                Log.d(TAG, "No agingShed found in farm data");
+                return items;
+            }
+
+            JsonObject agingShed = farmObject.getAsJsonObject("agingShed");
+            if (!agingShed.has("racks") || agingShed.get("racks").isJsonNull()) {
+                Log.d(TAG, "No racks found in agingShed");
+                return items;
+            }
+
+            JsonObject racks = agingShed.getAsJsonObject("racks");
+            long currentTime = System.currentTimeMillis();
+
+            // aging racks use "fish" as the item name field
+            // fermentation and spice racks use "recipe" as the item name field
+            String[][] rackTypes = {
+                {"aging", "fish", "Aging"},
+                {"fermentation", "recipe", "Fermenting"},
+                {"spice", "recipe", "Spice"}
+            };
+
+            for (String[] rackType : rackTypes) {
+                String rackKey = rackType[0];
+                String nameField = rackType[1];
+                String rackLabel = rackType[2];
+
+                if (!racks.has(rackKey) || racks.get(rackKey).isJsonNull()) {
+                    Log.d(TAG, "No " + rackKey + " racks found");
+                    continue;
+                }
+
+                JsonArray rackArray = racks.getAsJsonArray(rackKey);
+                Log.d(TAG, "Processing " + rackArray.size() + " " + rackKey + " rack slot(s)");
+
+                for (JsonElement slotElement : rackArray) {
+                    try {
+                        JsonObject slot = slotElement.getAsJsonObject();
+
+                        if (!slot.has("readyAt") || slot.get("readyAt").isJsonNull()) {
+                            Log.d(TAG, rackKey + " slot missing readyAt, skipping");
+                            continue;
+                        }
+
+                        long readyAt = slot.get("readyAt").getAsLong();
+                        if (readyAt < 100000000000L) {
+                            readyAt = readyAt * 1000;
+                        }
+
+                        if (readyAt <= currentTime) {
+                            Log.d(TAG, "Skipping " + rackKey + " slot - already ready/past");
+                            continue;
+                        }
+
+                        String name = getJsonString(slot, nameField);
+                        if (name == null || name.isEmpty()) {
+                            name = rackKey; // fallback to rack type name
+                        }
+
+                        String slotId = getJsonString(slot, "id");
+                        FarmItem item = new FarmItem("aging_shed", name, 1, readyAt);
+                        if (slotId != null && !slotId.isEmpty()) {
+                            item.setId(slotId);
+                        }
+                        item.setDetails(rackLabel);
+                        items.add(item);
+                        Log.d(TAG, "Added " + rackKey + " rack item: " + name + " ready at " + formatTimestamp(readyAt));
+
+                    } catch (Exception e) {
+                        Log.w(TAG, "Error processing " + rackKey + " slot: " + e.getMessage());
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error extracting aging shed: " + e.getMessage(), e);
+        }
+
+        sortByTimestamp(items);
+        DebugLog.log("[DEBUG] Aging Shed: Extracted " + items.size() + " item(s)");
+        return items;
+    }
+
+    /**
+     * Extracts salt farm notifications.
+     * Structure: farm.saltFarm.nodes["0"–"5"].salt.nextChargeAt
+     */
+    public static List<FarmItem> extractSaltFarm(JsonObject farmObject) {
+        Log.d(TAG, "Extracting salt farm...");
+        List<FarmItem> items = new ArrayList<>();
+
+        try {
+            if (farmObject == null) {
+                Log.d(TAG, "Farm object is null");
+                return items;
+            }
+
+            if (!farmObject.has("saltFarm") || farmObject.get("saltFarm").isJsonNull()) {
+                Log.d(TAG, "No saltFarm found in farm data");
+                return items;
+            }
+
+            JsonObject saltFarm = farmObject.getAsJsonObject("saltFarm");
+            if (!saltFarm.has("nodes") || saltFarm.get("nodes").isJsonNull()) {
+                Log.d(TAG, "No nodes found in saltFarm");
+                return items;
+            }
+
+            JsonObject nodes = saltFarm.getAsJsonObject("nodes");
+            long currentTime = System.currentTimeMillis();
+            Log.d(TAG, "Found " + nodes.size() + " salt farm node(s)");
+
+            for (String nodeId : nodes.keySet()) {
+                try {
+                    JsonObject node = nodes.getAsJsonObject(nodeId);
+
+                    if (!node.has("salt") || node.get("salt").isJsonNull()) {
+                        continue;
+                    }
+
+                    JsonObject salt = node.getAsJsonObject("salt");
+
+                    if (!salt.has("nextChargeAt") || salt.get("nextChargeAt").isJsonNull()) {
+                        continue;
+                    }
+
+                    long nextChargeAt = salt.get("nextChargeAt").getAsLong();
+                    if (nextChargeAt < 100000000000L) {
+                        nextChargeAt = nextChargeAt * 1000;
+                    }
+
+                    if (nextChargeAt <= currentTime) {
+                        Log.d(TAG, "Skipping salt node " + nodeId + " - already ready/past");
+                        continue;
+                    }
+
+                    FarmItem item = new FarmItem("salt_farm", "Salt node", 1, nextChargeAt);
+                    item.setId(nodeId);
+                    items.add(item);
+                    Log.d(TAG, "Added salt node " + nodeId + " ready at " + formatTimestamp(nextChargeAt));
+
+                } catch (Exception e) {
+                    Log.w(TAG, "Error processing salt node " + nodeId + ": " + e.getMessage());
+                }
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error extracting salt farm: " + e.getMessage(), e);
+        }
+
+        sortByTimestamp(items);
+        DebugLog.log("[DEBUG] Salt Farm: Extracted " + items.size() + " node(s)");
+        return items;
+    }
 }

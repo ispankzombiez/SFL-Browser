@@ -310,6 +310,10 @@ public class NotificationReceiver extends BroadcastReceiver {
                 // Cooking notification (grouped by building) - show food items
                 notificationTitle = itemName + " is done cooking!";
                 notificationText = details;
+            } else if ("aging_shed".equals(category)) {
+                // Aging shed notifications are grouped per rack type (Aging/Fermenting/Spice).
+                notificationTitle = itemName + " is done!";
+                notificationText = (details != null && !details.trim().isEmpty()) ? details : "Ready to collect";
             } else if ("crab_traps".equals(category)) {
                 // Crab trap notification - grouped by time window
                 if (count > 1) {

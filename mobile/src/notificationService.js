@@ -309,22 +309,30 @@ class NotificationService {
     }
 
     // Extract animals (awakeAt)
-    if (farmData.farm.animals) {
-      Object.entries(farmData.farm.animals).forEach(([key, animal]) => {
-        if (animal.awakeAt) {
-          const timeUntilReady = animal.awakeAt - now;
-          if (timeUntilReady > 0 && timeUntilReady <= NOTIFICATION_ADVANCE_TIME) {
-            readyItems.push({
-              type: 'animal',
-              name: `${animal.type} waking up`,
-              readyAt: animal.awakeAt,
-              timeUntilReady,
-              id: `animal_${key}`,
-            });
+    const animalSources = [
+      { source: farmData.farm, animalsKey: 'animals', prefix: 'farm' },
+      { source: farmData.farm.henHouse, animalsKey: 'animals', prefix: 'henhouse' },
+      { source: farmData.farm.barn, animalsKey: 'animals', prefix: 'barn' },
+    ];
+    animalSources.forEach(({ source, animalsKey, prefix }) => {
+      if (source && source[animalsKey]) {
+        const animals = source[animalsKey];
+        Object.entries(animals).forEach(([key, animal]) => {
+          if (animal.awakeAt) {
+            const timeUntilReady = animal.awakeAt - now;
+            if (timeUntilReady > 0 && timeUntilReady <= NOTIFICATION_ADVANCE_TIME) {
+              readyItems.push({
+                type: 'animal',
+                name: `${animal.type} waking up`,
+                readyAt: animal.awakeAt,
+                timeUntilReady,
+                id: `animal_${prefix}_${key}`,
+              });
+            }
           }
-        }
-      });
-    }
+        });
+      }
+    });
 
     // Extract cooking from buildings
     this.extractBuildingCrafts(farmData.farm, readyItems, now);
@@ -572,13 +580,13 @@ class NotificationService {
       });
     }
 
-    // Crimstones (only add if ready time is in the future)
+    // Crimstones
     if (farm.crimstones) {
       Object.entries(farm.crimstones).forEach(([key, crimstone]) => {
         if (crimstone.stone && crimstone.stone.minedAt) {
           const readyAt = crimstone.stone.minedAt + RESOURCE_GROWTH_TIMES.crimstone;
           const timeUntilReady = readyAt - now;
-          if (timeUntilReady > 0) {
+          if (timeUntilReady > 0 && timeUntilReady <= NOTIFICATION_ADVANCE_TIME) {
             readyItems.push({
               type: 'resource',
               name: 'Crimstone ready to mine',
@@ -591,13 +599,13 @@ class NotificationService {
       });
     }
 
-    // Oil Reserves (only add if ready time is in the future)
+    // Oil Reserves
     if (farm.oilReserves) {
       Object.entries(farm.oilReserves).forEach(([key, oilNode]) => {
         if (oilNode.oil && oilNode.oil.drilledAt) {
           const readyAt = oilNode.oil.drilledAt + RESOURCE_GROWTH_TIMES.oil;
           const timeUntilReady = readyAt - now;
-          if (timeUntilReady > 0) {
+          if (timeUntilReady > 0 && timeUntilReady <= NOTIFICATION_ADVANCE_TIME) {
             readyItems.push({
               type: 'resource',
               name: 'Oil ready to drill',
@@ -642,6 +650,48 @@ class NotificationService {
               readyAt,
               timeUntilReady,
               id: `sunstone_${key}`,
+            });
+          }
+        }
+      });
+    }
+
+    // Aging Shed – fermentation, spice, and aging racks each have readyAt timestamps
+    if (farm.agingShed && farm.agingShed.racks) {
+      const racks = farm.agingShed.racks;
+      const rackTypes = ['aging', 'fermentation', 'spice'];
+      rackTypes.forEach((rackType) => {
+        if (Array.isArray(racks[rackType])) {
+          racks[rackType].forEach((slot) => {
+            if (slot.readyAt) {
+              const timeUntilReady = slot.readyAt - now;
+              if (timeUntilReady > 0 && timeUntilReady <= NOTIFICATION_ADVANCE_TIME) {
+                readyItems.push({
+                  type: 'building',
+                  name: `Aging Shed ${rackType} ready — ${slot.recipe}`,
+                  readyAt: slot.readyAt,
+                  timeUntilReady,
+                  id: `agingshed_${rackType}_${slot.id}`,
+                });
+              }
+            }
+          });
+        }
+      });
+    }
+
+    // Salt Farm – each node has salt.nextChargeAt for when the next salt charge is available
+    if (farm.saltFarm && farm.saltFarm.nodes) {
+      Object.entries(farm.saltFarm.nodes).forEach(([key, node]) => {
+        if (node.salt && node.salt.nextChargeAt) {
+          const timeUntilReady = node.salt.nextChargeAt - now;
+          if (timeUntilReady > 0 && timeUntilReady <= NOTIFICATION_ADVANCE_TIME) {
+            readyItems.push({
+              type: 'resource',
+              name: 'Salt Farm charge ready',
+              readyAt: node.salt.nextChargeAt,
+              timeUntilReady,
+              id: `saltfarm_${key}`,
             });
           }
         }
