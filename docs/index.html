@@ -84,7 +84,7 @@
     <section>
       <h2>iOS Scriptable Widget Generator</h2>
       <div class="widget-tool">
-        <p>Enter your User/Farm ID, generate a personalized <code>widget.js</code>, then copy it into the Scriptable app on iPhone.</p>
+        <p>Enter your User/Farm ID, inject it into the raw <code>widget.js</code> template, then copy it into the Scriptable app on iPhone.</p>
         <input id="farmIdInput" type="text" placeholder="Enter your User/Farm ID (example: 123456789)">
         <div class="widget-actions">
           <button id="generateScriptBtn" type="button">Generate Script</button>
@@ -249,7 +249,7 @@
       return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
     }
 
-    generateScriptBtn.addEventListener('click', async () => {
+    async function generateScript() {
       const userId = farmIdInput.value.trim();
       if (!userId) {
         generatorStatus.textContent = 'Please enter your User/Farm ID first.';
@@ -263,6 +263,14 @@
         generatorStatus.textContent = 'Script generated. Copy it and paste into Scriptable.';
       } catch (error) {
         generatorStatus.textContent = `Error generating script: ${String(error)}`;
+      }
+    }
+
+    generateScriptBtn.addEventListener('click', generateScript);
+    farmIdInput.addEventListener('keydown', async (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        await generateScript();
       }
     });
 

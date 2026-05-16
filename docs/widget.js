@@ -238,7 +238,26 @@ function createErrorWidget(title, subtitle) {
   const s = widget.addText(subtitle);
   s.font = Font.systemFont(12);
   s.textColor = new Color("#d6d8de");
+  widget.refreshAfterDate = new Date(Date.now() + 5 * 60 * 1000);
   return widget;
+}
+
+function addHeader(widget, userId) {
+  const row = widget.addStack();
+  row.layoutHorizontally();
+  row.centerAlignContent();
+
+  const symbol = SFSymbol.named("leaf.fill");
+  if (symbol?.image) {
+    const icon = row.addImage(symbol.image);
+    icon.imageSize = new Size(14, 14);
+    icon.tintColor = new Color("#ffd46b");
+    row.addSpacer(6);
+  }
+
+  const title = row.addText(`SFL Farm #${userId}`);
+  title.font = Font.boldSystemFont(14);
+  title.textColor = Color.white();
 }
 
 function buildWidget(userId, farm, timers) {
@@ -249,9 +268,7 @@ function buildWidget(userId, farm, timers) {
   gradient.locations = [0, 1];
   widget.backgroundGradient = gradient;
 
-  const title = widget.addText(`🌻 SFL Farm #${userId}`);
-  title.font = Font.boldSystemFont(14);
-  title.textColor = Color.white();
+  addHeader(widget, userId);
 
   widget.addSpacer(6);
 
@@ -299,6 +316,7 @@ function buildWidget(userId, farm, timers) {
     }
   }
 
+  widget.refreshAfterDate = new Date(Date.now() + 60 * 1000);
   return widget;
 }
 
