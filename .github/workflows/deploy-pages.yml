@@ -22,13 +22,41 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Checkout
+      # 1) Pull down the current live production site
+      - name: Checkout main branch
         uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main-branch
+
+      # 2) Pull down the development branch with the new widget
+      - name: Checkout iphone-dev branch
+        uses: actions/checkout@v4
+        with:
+          ref: iphone-dev
+          path: dev-branch
+
+      # 3) Safely merge them together into the final deployment folder
+      - name: Assemble Pages content
+        run: |
+          set -euo pipefail
+          mkdir -p _site
+
+          # Copy the stable production site first
+          if [ -d "main-branch/docs" ]; then
+            cp -R main-branch/docs/. _site/
+          else
+            cp -R main-branch/. _site/
+          fi
+
+          # Layer the new widget folder on top in parallel
+          mkdir -p _site/ios-widget
+          cp -R dev-branch/docs/ios-widget/. _site/ios-widget/
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./docs
+          path: ./_site
 
       - name: Deploy to GitHub Pages
         id: deployment
