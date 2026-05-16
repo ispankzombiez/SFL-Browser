@@ -30,6 +30,29 @@
     footer { text-align: center; color: #bfa14a; font-size: 0.9em; margin: 2rem 0 1rem 0; }
     a { color: #c9b26d; text-decoration: none; }
     a:hover { text-decoration: underline; }
+    .widget-tool { background: #1e2027; border: 1px solid #3a3c46; border-radius: 10px; padding: 1rem; }
+    .widget-tool p { margin-top: 0.4rem; margin-bottom: 1rem; }
+    .widget-tool input, .widget-tool textarea, .widget-tool button {
+      width: 100%;
+      box-sizing: border-box;
+      border-radius: 8px;
+      border: 1px solid #464955;
+      background: #12141b;
+      color: #f0f0f0;
+      padding: 0.7rem 0.8rem;
+      font-size: 0.95rem;
+      margin-bottom: 0.75rem;
+    }
+    .widget-tool textarea { min-height: 260px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .widget-tool button { cursor: pointer; background: #bfa14a; color: #1a1c22; border: none; font-weight: 700; }
+    .widget-tool button.secondary { background: #2f3440; color: #f0f0f0; border: 1px solid #464955; }
+    .widget-tool .help { color: #c8c9cf; font-size: 0.9rem; }
+    .widget-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    @media (max-width: 740px) {
+      .widget-actions { grid-template-columns: 1fr; }
+      main { padding: 1.2rem; width: 96vw; }
+      h1 { font-size: 2rem; }
+    }
   </style>
 </head>
 <body>
@@ -56,6 +79,20 @@
         <li>Customizable settings and logs</li>
         <li>Completely open-source and community maintained</li>
       </ul>
+    </section>
+    
+    <section>
+      <h2>iOS Scriptable Widget Generator</h2>
+      <div class="widget-tool">
+        <p>Enter your User/Farm ID, generate a personalized <code>widget.js</code>, then copy it into the Scriptable app on iPhone.</p>
+        <input id="farmIdInput" type="text" placeholder="Enter your User/Farm ID (example: 123456789)">
+        <div class="widget-actions">
+          <button id="generateScriptBtn" type="button">Generate Script</button>
+          <button id="copyScriptBtn" class="secondary" type="button">Copy to Clipboard</button>
+        </div>
+        <textarea id="scriptOutput" readonly placeholder="Your generated widget.js will appear here..."></textarea>
+        <div id="generatorStatus" class="help">Tip: You can also set the ID directly in Scriptable widget parameter.</div>
+      </div>
     </section>
 
     <section>
@@ -191,5 +228,60 @@
   <footer>
     2025 iSPANKapps. Licensed under the MIT License.
   </footer>
+  <script>
+    const farmIdInput = document.getElementById('farmIdInput');
+    const generateScriptBtn = document.getElementById('generateScriptBtn');
+    const copyScriptBtn = document.getElementById('copyScriptBtn');
+    const scriptOutput = document.getElementById('scriptOutput');
+    const generatorStatus = document.getElementById('generatorStatus');
+
+    let widgetTemplateCache = null;
+
+    async function loadWidgetTemplate() {
+      if (widgetTemplateCache) return widgetTemplateCache;
+      const response = await fetch('./widget.js', { cache: 'no-store' });
+      if (!response.ok) throw new Error(`Failed to load widget template (${response.status})`);
+      widgetTemplateCache = await response.text();
+      return widgetTemplateCache;
+    }
+
+    function escapeForJsString(value) {
+      return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    }
+
+    generateScriptBtn.addEventListener('click', async () => {
+      const userId = farmIdInput.value.trim();
+      if (!userId) {
+        generatorStatus.textContent = 'Please enter your User/Farm ID first.';
+        return;
+      }
+
+      try {
+        const template = await loadWidgetTemplate();
+        const personalized = template.replace(/__USER_ID__/g, escapeForJsString(userId));
+        scriptOutput.value = personalized;
+        generatorStatus.textContent = 'Script generated. Copy it and paste into Scriptable.';
+      } catch (error) {
+        generatorStatus.textContent = `Error generating script: ${String(error)}`;
+      }
+    });
+
+    copyScriptBtn.addEventListener('click', async () => {
+      if (!scriptOutput.value.trim()) {
+        generatorStatus.textContent = 'Generate your script first.';
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(scriptOutput.value);
+        generatorStatus.textContent = 'Copied! Open Scriptable and paste into a new script.';
+      } catch (error) {
+        scriptOutput.focus();
+        scriptOutput.select();
+        document.execCommand('copy');
+        generatorStatus.textContent = 'Copied via fallback selection.';
+      }
+    });
+  </script>
 </body>
 </html>
