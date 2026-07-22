@@ -175,3 +175,7 @@ If you encounter any issues:
 - [Sunflower Land](https://sunflower-land.com/play/?ref=iSPANK) - The amazing game this app is built for
 - [Capacitor](https://capacitorjs.com/) - Cross-platform native runtime
 - [WalletConnect](https://walletconnect.com/) - Web3 wallet connectivity protocol
+
+
+## 🙏 An iSPANK Original
+https://wiki.sfl.world/en/user-pages/iSPANK's-Tools
