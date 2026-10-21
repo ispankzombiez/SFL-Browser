@@ -313,6 +313,7 @@ class NotificationService {
       { source: farmData.farm, animalsKey: 'animals', prefix: 'farm' },
       { source: farmData.farm.henHouse, animalsKey: 'animals', prefix: 'henhouse' },
       { source: farmData.farm.barn, animalsKey: 'animals', prefix: 'barn' },
+      { source: farmData.farm.pigpen, animalsKey: 'animals', prefix: 'pigpen' },
     ];
     animalSources.forEach(({ source, animalsKey, prefix }) => {
       if (source && source[animalsKey]) {
@@ -692,6 +693,24 @@ class NotificationService {
               readyAt: node.salt.nextChargeAt,
               timeUntilReady,
               id: `saltfarm_${key}`,
+            });
+          }
+        }
+      });
+    }
+
+    // Cave – machines process recipes (e.g., Mud) with startedAt and readyAt
+    if (farm.cave && farm.cave.machines) {
+      Object.entries(farm.cave.machines).forEach(([machineId, machine]) => {
+        if (machine.batch && machine.batch.readyAt) {
+          const timeUntilReady = machine.batch.readyAt - now;
+          if (timeUntilReady > 0 && timeUntilReady <= NOTIFICATION_ADVANCE_TIME) {
+            readyItems.push({
+              type: 'building',
+              name: `Cave ${machine.batch.recipe} ready`,
+              readyAt: machine.batch.readyAt,
+              timeUntilReady,
+              id: `cave_${machineId}`,
             });
           }
         }
