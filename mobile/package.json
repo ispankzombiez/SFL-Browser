@@ -1,6 +1,6 @@
 {
   "name": "sunflower-mobile",
-  "version": "1.0.0",
+  "version": "1.0.41",
   "private": true,
   "scripts": {
     "dev": "parcel src/index.html --open",
