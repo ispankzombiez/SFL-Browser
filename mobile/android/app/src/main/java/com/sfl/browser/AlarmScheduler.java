@@ -36,6 +36,9 @@ public class AlarmScheduler {
     private static final int NOTIFICATION_ID_BASE = 5000; // Base ID to avoid conflicts
     private static final String PREFS_NAME = "alarm_scheduler_prefs";
     private static final String PREFS_KEY_SCHEDULED = "scheduled_group_ids";
+    // Window for approximate (battery saver) alarms. Lets the system batch wakeups
+    // within this window instead of waking the device at an exact moment.
+    private static final long APPROXIMATE_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
     
     private Context context;
     private AlarmManager alarmManager;
@@ -188,9 +191,27 @@ public class AlarmScheduler {
             
             Log.d(TAG, "PendingIntent created: " + (pendingIntent != null ? "SUCCESS" : "FAILED"));
             
-            // Schedule alarm to fire at readyTime with maximum precision
+            // Schedule alarm to fire at readyTime
+            // Battery saver: when "approximate_alarms" is ON, use inexact windowed alarms
+            // (setWindow) so the system can batch wakeups instead of waking the device at
+            // an exact moment. Notifications may arrive a few minutes late.
+            boolean approximate = androidx.preference.PreferenceManager
+                    .getDefaultSharedPreferences(context)
+                    .getBoolean("approximate_alarms", false);
             try {
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                if (approximate && alarmManager != null) {
+                    // Inexact, Doze-friendly windowed alarm (battery saver)
+                    alarmManager.setWindow(
+                            AlarmManager.RTC_WAKEUP,
+                            readyTime,
+                            APPROXIMATE_WINDOW_MS,
+                            pendingIntent
+                    );
+                    long delayMs = readyTime - currentTime;
+                    Log.d(TAG, "🔋 Battery saver: scheduled INEXACT windowed alarm (setWindow, +" +
+                          (APPROXIMATE_WINDOW_MS / 60000) + "min window) for " + group.name +
+                          " - fires in " + (delayMs / 1000) + " seconds (ID: " + notificationId + ")");
+                } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                     // API 31+ requires SCHEDULE_EXACT_ALARM permission check
                     if (alarmManager != null && alarmManager.canScheduleExactAlarms()) {
                         // Priority: Use setExactAndAllowWhileIdle first (most reliable)

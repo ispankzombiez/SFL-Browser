@@ -16,6 +16,11 @@
             android:title="Stop Notification Worker"
             android:summary="Stop the background notification worker" />
         <SwitchPreferenceCompat
+            android:key="approximate_alarms"
+            android:title="Battery Saver Notifications"
+            android:summary="Save battery by letting the system batch notification wakeups instead of firing at the exact moment. Notifications may arrive a few minutes late. (default: OFF)"
+            android:defaultValue="false" />
+        <SwitchPreferenceCompat
             android:key="autostart_manager"
             android:title="Auto Start Worker"
             android:summary="Auto starts the notification worker if it was not running when the Sunflower Land main activity opens"
