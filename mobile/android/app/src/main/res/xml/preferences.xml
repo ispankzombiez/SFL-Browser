@@ -292,7 +292,7 @@
         <Preference
             android:key="view_processed_json"
             android:title="View Processed JSON"
-            android:summary="Open and view the processed future_notifications.json file (all future notifications)" />
+            android:summary="Open and view the processed processed_data.json file (all extracted farm items)" />
         <Preference
             android:key="view_notification_log"
             android:title="View Notification Log"

@@ -15,6 +15,8 @@ import com.sfl.browser.clustering.ClustererFactory;
 import com.sfl.browser.clustering.NotificationGroup;
 import com.sfl.browser.clustering.PetSleepClusterer;
 import com.sfl.browser.models.FarmItem;
+import com.sfl.browser.models.SickAnimal;
+import com.sfl.browser.models.VillageProject;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -216,6 +218,12 @@ public class FarmDataProcessor {
                 DebugLog.log("Auction schedule processing disabled in preferences");
             }
 
+            // Extract sick animals for health monitoring (transferred from dead NotificationManagerService pipeline)
+            List<SickAnimal> sickAnimals = CategoryExtractors.extractSickAnimals(farmObject);
+
+            // Extract village projects for completion tracking (transferred from dead NotificationManagerService pipeline)
+            List<VillageProject> villageProjects = CategoryExtractors.extractVillageProjects(farmObject);
+
             // Merge auction data with other extracted data for unified processing
             List<FarmItem> allExtractedItems = new ArrayList<>();
             allExtractedItems.addAll(crops);
@@ -282,17 +290,24 @@ public class FarmDataProcessor {
             List<NotificationGroup> flowerGroups = flowerClusterer.cluster(flowers);
             allGroups.addAll(flowerGroups);
 
-            CategoryClusterer craftingBoxClusterer = ClustererFactory.getClusterer("crafting_box", context);
+            CategoryClusterer craftingBoxClusterer = ClustererFactory.getClusterer("crafting", context);
             List<NotificationGroup> craftingBoxGroups = craftingBoxClusterer.cluster(craftingBox);
             allGroups.addAll(craftingBoxGroups);
 
-            CategoryClusterer beehiveClusterer = ClustererFactory.getClusterer("beehives", context);
+            CategoryClusterer beehiveClusterer = ClustererFactory.getClusterer("beehive", context);
             List<NotificationGroup> beehiveGroups = beehiveClusterer.cluster(beehives);
             allGroups.addAll(beehiveGroups);
 
             CategoryClusterer cropMachineClusterer = ClustererFactory.getClusterer("crop_machine", context);
             List<NotificationGroup> cropMachineGroups = cropMachineClusterer.cluster(cropMachine);
-            allGroups.addAll(cropMachineGroups);
+            boolean cropMachineEnabled = prefs.getBoolean("category_crop_machine", true);
+            DebugLog.log("  Toggle (category_crop_machine): " + cropMachineEnabled);
+            if (cropMachineEnabled) {
+                allGroups.addAll(cropMachineGroups);
+                Log.d(TAG, "  Crop Machine: Created " + cropMachineGroups.size() + " group(s)");
+            } else {
+                Log.d(TAG, "  Crop Machine: Notifications disabled - skipping " + cropMachineGroups.size() + " group(s)");
+            }
 
             CategoryClusterer sunstoneClusterer = ClustererFactory.getClusterer("sunstones", context);
             List<NotificationGroup> sunstoneGroups = sunstoneClusterer.cluster(sunstones);
@@ -395,6 +410,56 @@ public class FarmDataProcessor {
             CategoryClusterer dailyResetClusterer = ClustererFactory.getClusterer("daily_reset", context);
             List<NotificationGroup> dailyResetGroups = dailyResetClusterer.cluster(dailyReset);
             allGroups.addAll(dailyResetGroups);
+
+            // Handle sick animal notifications with state tracking
+            // (transferred from dead NotificationManagerService pipeline)
+            if (prefs.getBoolean("category_animal_sick", true)) {
+                SickAnimalTracker sickTracker = new SickAnimalTracker(context);
+                List<SickAnimal> newlySickAnimals = sickTracker.getNewlySickAnimals(sickAnimals);
+
+                if (!newlySickAnimals.isEmpty()) {
+                    NotificationGroup sickAnimalGroup = SickAnimalNotificationExtractor.createSickAnimalNotification(newlySickAnimals);
+                    if (sickAnimalGroup != null) {
+                        allGroups.add(sickAnimalGroup);
+                        Log.d(TAG, "  Sick Animals: Created 1 group with " + newlySickAnimals.size() + " newly sick animal(s)");
+                        DebugLog.log("  Sick Animals: Created 1 group with " + newlySickAnimals.size() + " newly sick animal(s)");
+                    }
+                } else {
+                    Log.d(TAG, "  Sick Animals: No newly sick animals detected");
+                    DebugLog.log("  Sick Animals: No newly sick animals detected");
+                }
+
+                // Always update the tracker with current state for next run
+                sickTracker.saveCurrentState(sickAnimals);
+            } else {
+                Log.d(TAG, "  Sick Animals: Notifications disabled");
+                DebugLog.log("  Sick Animals: Notifications disabled");
+            }
+
+            // Handle village project completion notifications with state tracking
+            // (transferred from dead NotificationManagerService pipeline)
+            if (prefs.getBoolean("category_village_projects", true)) {
+                VillageProjectTracker projectTracker = new VillageProjectTracker(context);
+                List<VillageProject> newlyCompletedProjects = projectTracker.getNewlyCompletedProjects(villageProjects);
+
+                if (!newlyCompletedProjects.isEmpty()) {
+                    NotificationGroup projectGroup = VillageProjectNotificationExtractor.createVillageProjectNotification(newlyCompletedProjects);
+                    if (projectGroup != null) {
+                        allGroups.add(projectGroup);
+                        Log.d(TAG, "  Village Projects: Created 1 group with " + newlyCompletedProjects.size() + " newly completed project(s)");
+                        DebugLog.log("  Village Projects: Created 1 group with " + newlyCompletedProjects.size() + " newly completed project(s)");
+                    }
+                } else {
+                    Log.d(TAG, "  Village Projects: No newly completed projects detected");
+                    DebugLog.log("  Village Projects: No newly completed projects detected");
+                }
+
+                // Always update the tracker with current state for next run
+                projectTracker.saveCurrentState(villageProjects);
+            } else {
+                Log.d(TAG, "  Village Projects: Notifications disabled");
+                DebugLog.log("  Village Projects: Notifications disabled");
+            }
 
             // Convert sold marketplace listings to notification groups
             List<NotificationGroup> marketplaceGroups = convertSoldListingsToNotifications(soldListings);

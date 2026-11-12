@@ -45,25 +45,22 @@ public class ClustererFactory {
                 return new FlowerClusterer();
             
             case "crafting":
+            case "crafting_box":
                 Log.d(TAG, "Using CraftingBoxClusterer for category: " + category);
                 return new CraftingBoxClusterer();
             
             case "beehive":
+            case "beehives":
             case "beehive swarm":
             case "beehive full":
-            case "Beehive Swarm":
-            case "Beehive Full":
                 Log.d(TAG, "Using BeehiveClusterer for category: " + category);
                 BeehiveClusterer beehiveClusterer = new BeehiveClusterer();
                 beehiveClusterer.setContext(context);
                 return beehiveClusterer;
             
             case "crop machine":
-            case "Crop Machine":
-                Log.d(TAG, "Using CropMachineClusterer for category: " + category);
-                return new CropMachineClusterer();
-            
-            case "cropMachine":
+            case "crop_machine":
+            case "cropmachine":
                 Log.d(TAG, "Using CropMachineClusterer for category: " + category);
                 return new CropMachineClusterer();
             
@@ -71,13 +68,14 @@ public class ClustererFactory {
                 Log.d(TAG, "Using SunstoneClusterer for category: " + category);
                 return new SunstoneClusterer();
             
-            case "dailyReset":
-            case "Daily Reset":
+            case "dailyreset":
+            case "daily_reset":
+            case "daily reset":
                 Log.d(TAG, "Using DefaultClusterer for category: " + category);
                 return new DefaultClusterer();
             
             case "floating_island":
-            case "Floating Island":
+            case "floating island":
                 Log.d(TAG, "Using FloatingIslandClusterer for category: " + category);
                 return new FloatingIslandClusterer();
             

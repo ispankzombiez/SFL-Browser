@@ -1847,7 +1847,7 @@ public class CategoryExtractors {
     /**
      * Extract floating island notifications (schedule and shop changes)
      * Note: This method requires context, so it's delegated to FloatingIslandExtractor
-     * which is called directly from NotificationManagerService
+     * which is called directly from FarmDataProcessor
      */
     public static List<FarmItem> extractFloatingIsland(JsonObject farmData, android.content.Context context) {
         FloatingIslandExtractor extractor = new FloatingIslandExtractor(context);

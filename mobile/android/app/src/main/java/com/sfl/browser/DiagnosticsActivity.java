@@ -14,7 +14,6 @@ import android.os.Build;
 import androidx.work.WorkManager;
 import androidx.work.WorkInfo;
 import java.util.List;
-import com.sfl.browser.ServiceUtils;
 import com.sfl.browser.WorkManagerHelper;
 
 public class DiagnosticsActivity extends AppCompatActivity {

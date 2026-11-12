@@ -80,9 +80,12 @@ public class AlarmScheduler {
                 long readyTime = group.earliestReadyTime;
                 String groupId = group.groupId;
                 
-                // For marketplace and village_projects notifications, deliver immediately (event-based, not time-based)
+                // For marketplace, village_projects and animal_sick notifications, deliver immediately (event-based, not time-based)
                 // For other notifications, skip if readyTime has already passed
-                if (readyTime <= currentTime && !"marketplace".equals(group.category) && !"village_projects".equals(group.category)) {
+                boolean immediateCategory = "marketplace".equals(group.category)
+                        || "village_projects".equals(group.category)
+                        || "animal_sick".equals(group.category);
+                if (readyTime <= currentTime && !immediateCategory) {
                     Log.d(TAG, "Skipping " + group.name + " - ready time already passed");
                     continue;
                 }
@@ -94,8 +97,8 @@ public class AlarmScheduler {
                     continue;
                 }
                 
-                // For marketplace and village_projects notifications, fire immediately
-                if ("marketplace".equals(group.category) || "village_projects".equals(group.category)) {
+                // For event-based categories, fire immediately
+                if (immediateCategory) {
                     Log.d(TAG, "Firing " + group.category + " notification immediately: " + group.name);
                     deliverNotificationNow(group);
                 } else {
@@ -152,6 +155,9 @@ public class AlarmScheduler {
                 intent.putExtra("body", sflBody);
             } else if ("village_projects".equals(group.category)) {
                 intent.putExtra("title", "Village Project Complete!");
+                intent.putExtra("body", group.name);
+            } else if ("animal_sick".equals(group.category)) {
+                intent.putExtra("title", "Animals just got sick!");
                 intent.putExtra("body", group.name);
             } else {
                 intent.putExtra("title", group.quantity + " " + group.name + " Ready");
@@ -290,17 +296,30 @@ public class AlarmScheduler {
             intent.putExtra("groupId", group.groupId);
             intent.putExtra("details", group.details);  // Pass optional details
             
-            // Set title and body for marketplace notification
-            intent.putExtra("title", group.quantity + " " + group.name + " Sold!");
-            // Extract SFL value from details (format: "50 Milk for 6.9999 SFL")
-            String sflBody = "Listing sold"; // fallback
-            if (group.details != null && group.details.contains(" for ")) {
-                String[] parts = group.details.split(" for ");
-                if (parts.length > 1) {
-                    sflBody = parts[1]; // e.g., "6.9999 SFL"
+            // Set category-appropriate title and body
+            if ("marketplace".equals(group.category)) {
+                intent.putExtra("title", group.quantity + " " + group.name + " Sold!");
+                // Extract SFL value from details (format: "50 Milk for 6.9999 SFL")
+                String sflBody = "Listing sold"; // fallback
+                if (group.details != null && group.details.contains(" for ")) {
+                    String[] parts = group.details.split(" for ");
+                    if (parts.length > 1) {
+                        sflBody = parts[1]; // e.g., "6.9999 SFL"
+                    }
                 }
+                intent.putExtra("body", sflBody);
+            } else if ("village_projects".equals(group.category)) {
+                intent.putExtra("title", group.quantity > 1
+                        ? group.quantity + " Village Projects Complete!"
+                        : "Village Project Complete!");
+                intent.putExtra("body", group.name);
+            } else if ("animal_sick".equals(group.category)) {
+                intent.putExtra("title", "Animals just got sick!");
+                intent.putExtra("body", group.name);
+            } else {
+                intent.putExtra("title", group.quantity + " " + group.name + " Ready");
+                intent.putExtra("body", "Ready to harvest/collect");
             }
-            intent.putExtra("body", sflBody);
             
             Log.d(TAG, "Intent extras set for immediate delivery: title=" + intent.getStringExtra("title") + 
                   ", body=" + intent.getStringExtra("body") +
@@ -309,7 +328,7 @@ public class AlarmScheduler {
             
             // Send broadcast immediately to trigger notification
             context.sendBroadcast(intent);
-            Log.d(TAG, "🎉 Delivered marketplace notification immediately for " + group.name + 
+            Log.d(TAG, "🎉 Delivered " + group.category + " notification immediately for " + group.name + 
                   " (ID: " + notificationId + ")");
             
         } catch (Exception e) {

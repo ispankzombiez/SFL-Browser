@@ -19,7 +19,8 @@ public class ProcessedJsonActivity extends AppCompatActivity {
         textView.setPadding(16, 96, 16, 16);
         textView.setTextSize(12);
         
-        String logContent = readLogFile("processed.json");
+        // Live pipeline (FarmDataProcessor) writes processed_data.json
+        String logContent = readLogFile("processed_data.json");
         textView.setText(logContent);
         
         scrollView.addView(textView);

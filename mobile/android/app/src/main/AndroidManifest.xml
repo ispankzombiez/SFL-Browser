@@ -36,11 +36,6 @@
             android:label="General Debug Log"
             android:theme="@style/AppTheme.NoActionBar"
             android:exported="false" />
-        <service
-            android:name=".NotificationManagerService"
-            android:enabled="true"
-            android:exported="false"
-            android:process=":notifications" />
 
         <receiver
             android:name=".NotificationReceiver"
