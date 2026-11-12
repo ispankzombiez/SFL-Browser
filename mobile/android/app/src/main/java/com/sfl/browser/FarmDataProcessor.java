@@ -157,6 +157,18 @@ public class FarmDataProcessor {
                 saltFarm = CategoryExtractors.extractSaltFarm(farmObject);
             }
 
+            // Extract cave machine batches if enabled
+            List<FarmItem> cave = new ArrayList<>();
+            if (prefs.getBoolean("category_cave", true)) {
+                cave = CategoryExtractors.extractCave(farmObject);
+            }
+
+            // Extract pigpen animals if enabled
+            List<FarmItem> pigpen = new ArrayList<>();
+            if (prefs.getBoolean("category_pigpen", true)) {
+                pigpen = CategoryExtractors.extractPigpen(farmObject);
+            }
+
             // Extract skill cooldowns if enabled
             List<FarmItem> skillCooldowns = new ArrayList<>();
             if (prefs.getBoolean("category_skill_cooldown", true)) {
@@ -222,6 +234,8 @@ public class FarmDataProcessor {
             allExtractedItems.addAll(shrines);
             allExtractedItems.addAll(agingShed);
             allExtractedItems.addAll(saltFarm);
+            allExtractedItems.addAll(cave);
+            allExtractedItems.addAll(pigpen);
             allExtractedItems.addAll(skillCooldowns);
             allExtractedItems.addAll(dailyReset);
             allExtractedItems.addAll(floatingIsland);
@@ -348,6 +362,30 @@ public class FarmDataProcessor {
                 DebugLog.log("  Added " + saltFarmGroups.size() + " salt farm group(s) to allGroups");
             } else {
                 DebugLog.log("  Salt farm groups NOT added (toggle disabled)");
+            }
+
+            CategoryClusterer caveClusterer = ClustererFactory.getClusterer("cave", context);
+            List<NotificationGroup> caveGroups = caveClusterer.cluster(cave);
+            DebugLog.log("[DEBUG] Cave: Extracted " + cave.size() + " items, created " + caveGroups.size() + " group(s)");
+            boolean caveEnabled = prefs.getBoolean("category_cave", true);
+            DebugLog.log("  Toggle (category_cave): " + caveEnabled);
+            if (caveEnabled) {
+                allGroups.addAll(caveGroups);
+                DebugLog.log("  Added " + caveGroups.size() + " cave group(s) to allGroups");
+            } else {
+                DebugLog.log("  Cave groups NOT added (toggle disabled)");
+            }
+
+            CategoryClusterer pigpenClusterer = ClustererFactory.getClusterer("pigpen", context);
+            List<NotificationGroup> pigpenGroups = pigpenClusterer.cluster(pigpen);
+            DebugLog.log("[DEBUG] Pigpen: Extracted " + pigpen.size() + " items, created " + pigpenGroups.size() + " group(s)");
+            boolean pigpenEnabled = prefs.getBoolean("category_pigpen", true);
+            DebugLog.log("  Toggle (category_pigpen): " + pigpenEnabled);
+            if (pigpenEnabled) {
+                allGroups.addAll(pigpenGroups);
+                DebugLog.log("  Added " + pigpenGroups.size() + " pigpen group(s) to allGroups");
+            } else {
+                DebugLog.log("  Pigpen groups NOT added (toggle disabled)");
             }
 
             CategoryClusterer skillCooldownClusterer = ClustererFactory.getClusterer("skill_cooldown", context);

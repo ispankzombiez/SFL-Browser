@@ -251,6 +251,14 @@ public class NotificationManagerService extends Service {
             if (prefs.getBoolean("category_salt_farm", true)) {
                 saltFarm = CategoryExtractors.extractSaltFarm(farmObject);
             }
+            List<FarmItem> cave = new ArrayList<>();
+            if (prefs.getBoolean("category_cave", true)) {
+                cave = CategoryExtractors.extractCave(farmObject);
+            }
+            List<FarmItem> pigpen = new ArrayList<>();
+            if (prefs.getBoolean("category_pigpen", true)) {
+                pigpen = CategoryExtractors.extractPigpen(farmObject);
+            }
             
             // Extract daily reset if enabled in preferences
             List<FarmItem> dailyReset = new ArrayList<>();
@@ -396,6 +404,26 @@ public class NotificationManagerService extends Service {
                 Log.d(TAG, "  Salt Farm: Created " + saltFarmGroups.size() + " group(s)");
             } else {
                 Log.d(TAG, "  Salt Farm: Notifications disabled - skipping " + saltFarmGroups.size() + " group(s)");
+            }
+
+            CategoryClusterer caveClusterer = ClustererFactory.getClusterer("cave", this);
+            List<NotificationGroup> caveGroups = caveClusterer.cluster(cave);
+            boolean caveEnabled = prefs.getBoolean("category_cave", true);
+            if (caveEnabled) {
+                allGroups.addAll(caveGroups);
+                Log.d(TAG, "  Cave: Created " + caveGroups.size() + " group(s)");
+            } else {
+                Log.d(TAG, "  Cave: Notifications disabled - skipping " + caveGroups.size() + " group(s)");
+            }
+
+            CategoryClusterer pigpenClusterer = ClustererFactory.getClusterer("pigpen", this);
+            List<NotificationGroup> pigpenGroups = pigpenClusterer.cluster(pigpen);
+            boolean pigpenEnabled = prefs.getBoolean("category_pigpen", true);
+            if (pigpenEnabled) {
+                allGroups.addAll(pigpenGroups);
+                Log.d(TAG, "  Pigpen: Created " + pigpenGroups.size() + " group(s)");
+            } else {
+                Log.d(TAG, "  Pigpen: Notifications disabled - skipping " + pigpenGroups.size() + " group(s)");
             }
             
             CategoryClusterer dailyResetClusterer = ClustererFactory.getClusterer("dailyReset", this);

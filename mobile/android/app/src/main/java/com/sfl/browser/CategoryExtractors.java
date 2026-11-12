@@ -22,12 +22,27 @@ public class CategoryExtractors {
     private static Map<String, Long> flowerBedFinishTimes = new HashMap<>();
     private static final String TAG = "CategoryExtractors";
 
+    // Fertiliser speed multipliers matching the game's "speed window" model
+    // (see sunflower-land boostWindows.ts / getCropReadyAt). A value > 1 means
+    // time accrues that much faster from fertilisedAt onwards.
+    private static final Map<String, Double> CROP_FERTILISER_SPEEDS = new HashMap<String, Double>() {{
+        put("Rapid Root", 2.0);           // -50% remaining grow time
+        put("Sproutroot Surprise", 2.0);  // -50% remaining grow time
+    }};
+    private static final Map<String, Double> FRUIT_FERTILISER_SPEEDS = new HashMap<String, Double>() {{
+        put("Turbofruit Mix", 1.25);      // -20% grow time for every harvest
+    }};
+    private static final Map<String, Double> GREENHOUSE_FERTILISER_SPEEDS = new HashMap<String, Double>() {{
+        put("Greenhouse Glow", 1.25);     // -20% grow time
+    }};
+
     /**
      * Extracts crops from raw API response
      * Navigates to farm.crops object (which contains plots with IDs as keys)
      * Each plot contains a nested "crop" object with name and plantedAt timestamp
      * 
-     * Calculation: readyTime = plantedAt + Constants.CROP_GROWTH_TIMES.get(cropName)
+     * Calculation: readyTime = plantedAt + crop.baseDurationMs (API), falling back
+     * to Constants.CROP_GROWTH_TIMES.get(cropName) for legacy crops
      * 
      * @param farmData JsonObject farm object from API response (already extracted from root)
      * @return List<FarmItem> sorted by readyTime ascending (earliest first)
@@ -75,14 +90,21 @@ public class CategoryExtractors {
                         continue;
                     }
 
-                    // Calculate readyTime = plantedAt + baseTime from Constants
-                    Long baseTime = Constants.CROP_GROWTH_TIMES.get(name);
-                    if (baseTime == null || baseTime <= 0) {
-                        Log.w(TAG, "Plot " + cropPlotId + ": Unknown crop '" + name + "' or invalid baseTime");
-                        continue;
+                    // Prefer the API-provided baseDurationMs (speed-rate model) and
+                    // fall back to the hardcoded Constants lookup for legacy crops.
+                    long baseTime = getBaseDurationMs(cropData);
+                    long readyTime;
+                    if (baseTime > 0) {
+                        readyTime = applyFertiliserSpeed(plantedAt, baseTime, plotData, CROP_FERTILISER_SPEEDS);
+                    } else {
+                        Long fallback = Constants.CROP_GROWTH_TIMES.get(name);
+                        if (fallback == null || fallback <= 0) {
+                            Log.w(TAG, "Plot " + cropPlotId + ": Unknown crop '" + name + "' or invalid baseTime");
+                            continue;
+                        }
+                        baseTime = fallback;
+                        readyTime = plantedAt + baseTime;
                     }
-                    
-                    long readyTime = plantedAt + baseTime;
                     
                     // Only include crops that will be ready in the future (not already passed)
                     long currentTime = System.currentTimeMillis();
@@ -120,7 +142,8 @@ public class CategoryExtractors {
      * Navigates to farm.fruitPatches object (which contains patches with IDs as keys)
      * Each patch contains a nested "fruit" object with name, plantedAt, and harvestedAt timestamps
      * 
-     * Calculation: readyTime = max(plantedAt, harvestedAt) + Constants.FRUIT_GROWTH_TIMES.get(fruitName)
+     * Calculation: readyTime = max(plantedAt, harvestedAt) + fruit.baseDurationMs (API),
+     * falling back to Constants.FRUIT_GROWTH_TIMES.get(fruitName) for legacy fruit
      * If harvestedAt is later than plantedAt, use harvestedAt (fruit was already harvested once)
      * Otherwise use plantedAt (first harvest)
      * 
@@ -181,14 +204,21 @@ public class CategoryExtractors {
                     // Otherwise from plantedAt
                     long baseTimestamp = Math.max(plantedAt, harvestedAt);
                     
-                    // Calculate readyTime = baseTimestamp + baseTime from Constants
-                    Long baseTime = Constants.FRUIT_GROWTH_TIMES.get(name);
-                    if (baseTime == null || baseTime <= 0) {
-                        Log.w(TAG, "Patch " + patchId + ": Unknown fruit '" + name + "' or invalid baseTime");
-                        continue;
+                    // Prefer the API-provided baseDurationMs (speed-rate model) and
+                    // fall back to the hardcoded Constants lookup for legacy fruit.
+                    long baseTime = getBaseDurationMs(fruitData);
+                    long readyTime;
+                    if (baseTime > 0) {
+                        readyTime = applyFertiliserSpeed(baseTimestamp, baseTime, patchData, FRUIT_FERTILISER_SPEEDS);
+                    } else {
+                        Long fallback = Constants.FRUIT_GROWTH_TIMES.get(name);
+                        if (fallback == null || fallback <= 0) {
+                            Log.w(TAG, "Patch " + patchId + ": Unknown fruit '" + name + "' or invalid baseTime");
+                            continue;
+                        }
+                        baseTime = fallback;
+                        readyTime = baseTimestamp + baseTime;
                     }
-                    
-                    long readyTime = baseTimestamp + baseTime;
                     
                     // Only include fruits that will be ready in the future (not already passed)
                     long currentTime = System.currentTimeMillis();
@@ -228,7 +258,8 @@ public class CategoryExtractors {
      * Similar structure to fruitPatches: contains patches with IDs as keys
      * Each patch contains a nested "crop" object with name, plantedAt, and harvestedAt timestamps
      * 
-     * Calculation: readyTime = max(plantedAt, harvestedAt) + Constants.GREENHOUSE_CROP_GROWTH_TIMES.get(cropName)
+     * Calculation: readyTime = plantedAt + plant.baseDurationMs (API), falling back
+     * to Constants.GREENHOUSE_CROP_GROWTH_TIMES.get(cropName) for legacy plants
      * 
      * @param farmData JsonObject farm object from API response
      * @return List<FarmItem> sorted by readyTime ascending (earliest first), only future items
@@ -293,14 +324,21 @@ public class CategoryExtractors {
                     // Greenhouse crops don't have harvestedAt, so we just use plantedAt as base
                     long baseTimestamp = plantedAt;
                     
-                    // Calculate readyTime = baseTimestamp + baseTime from Constants
-                    Long baseTime = Constants.GREENHOUSE_CROP_GROWTH_TIMES.get(name);
-                    if (baseTime == null || baseTime <= 0) {
-                        Log.w(TAG, "Greenhouse pot " + potId + ": Unknown greenhouse crop '" + name + "' or invalid baseTime");
-                        continue;
+                    // Prefer the API-provided baseDurationMs (speed-rate model) and
+                    // fall back to the hardcoded Constants lookup for legacy plants.
+                    long baseTime = getBaseDurationMs(plantData);
+                    long readyTime;
+                    if (baseTime > 0) {
+                        readyTime = applyFertiliserSpeed(baseTimestamp, baseTime, potData, GREENHOUSE_FERTILISER_SPEEDS);
+                    } else {
+                        Long fallback = Constants.GREENHOUSE_CROP_GROWTH_TIMES.get(name);
+                        if (fallback == null || fallback <= 0) {
+                            Log.w(TAG, "Greenhouse pot " + potId + ": Unknown greenhouse crop '" + name + "' or invalid baseTime");
+                            continue;
+                        }
+                        baseTime = fallback;
+                        readyTime = baseTimestamp + baseTime;
                     }
-                    
-                    long readyTime = baseTimestamp + baseTime;
                     
                     // Only include crops that will be ready in the future (not already passed)
                     long currentTime = System.currentTimeMillis();
@@ -348,8 +386,8 @@ public class CategoryExtractors {
      * with resource IDs as keys. Each resource contains a nested "wood" or "stone" object
      * with harvest/mine timestamp and boostedTime.
      * 
-     * For trees: uses wood.choppedAt + Constants.RESOURCE_REPLENISH_TIMES["Tree"]
-     * For others: uses stone.minedAt + Constants.RESOURCE_REPLENISH_TIMES[type]
+     * For trees: uses wood.baseDurationMs (API) or wood.choppedAt + Constants.RESOURCE_REPLENISH_TIMES["Tree"]
+     * For others: uses stone.baseDurationMs (API) or stone.minedAt + Constants.RESOURCE_REPLENISH_TIMES[type]
      * 
      * @param farmData JsonObject farm object from API response
      * @return List<FarmItem> sorted by readyTime ascending (earliest first), only future items
@@ -399,11 +437,12 @@ public class CategoryExtractors {
                     Log.d(TAG, "Processing " + resourceType + " (looking up: " + singularType + 
                           ", found " + resourcesObject.size() + " resource(s))");
                     
-                    // Get replenish time from Constants
-                    Long replenishTime = Constants.RESOURCE_REPLENISH_TIMES.get(singularType);
-                    if (replenishTime == null || replenishTime <= 0) {
-                        Log.w(TAG, "Unknown resource type or invalid replenish time: " + singularType);
-                        continue;
+                    // Fallback replenish time from Constants (used when the API
+                    // response does not carry baseDurationMs for this resource)
+                    Long fallbackReplenishTime = Constants.RESOURCE_REPLENISH_TIMES.get(singularType);
+                    if (fallbackReplenishTime == null || fallbackReplenishTime <= 0) {
+                        Log.w(TAG, "No Constants replenish time for " + singularType + " - will rely on API baseDurationMs only");
+                        fallbackReplenishTime = null;
                     }
                     
                     // Iterate over each resource in this type
@@ -446,6 +485,18 @@ public class CategoryExtractors {
                             } else {
                                 Log.w(TAG, resourceType + " resource " + resourceId + 
                                       " missing " + timestampField);
+                                continue;
+                            }
+                            
+                            // Prefer the API-provided baseDurationMs (speed-rate
+                            // model), fall back to the hardcoded Constants value
+                            long replenishTime = getBaseDurationMs(harvestData);
+                            if (replenishTime <= 0 && fallbackReplenishTime != null) {
+                                replenishTime = fallbackReplenishTime;
+                            }
+                            if (replenishTime <= 0) {
+                                Log.w(TAG, resourceType + " resource " + resourceId +
+                                      ": no baseDurationMs and no Constants replenish time for " + singularType);
                                 continue;
                             }
                             
@@ -2041,5 +2092,228 @@ public class CategoryExtractors {
         sortByTimestamp(items);
         DebugLog.log("[DEBUG] Salt Farm: Extracted " + items.size() + " node(s)");
         return items;
+    }
+
+    /**
+     * Extracts cave machine notifications.
+     * Structure: farm.cave.machines[machineId].batch = { recipe, startedAt, readyAt }
+     * The API provides readyAt directly, so no duration lookup is needed.
+     */
+    public static List<FarmItem> extractCave(JsonObject farmObject) {
+        Log.d(TAG, "Extracting cave machines...");
+        List<FarmItem> items = new ArrayList<>();
+
+        try {
+            if (farmObject == null) {
+                Log.d(TAG, "Farm object is null");
+                return items;
+            }
+
+            if (!farmObject.has("cave") || farmObject.get("cave").isJsonNull()) {
+                Log.d(TAG, "No cave found in farm data");
+                return items;
+            }
+
+            JsonObject cave = farmObject.getAsJsonObject("cave");
+            if (!cave.has("machines") || cave.get("machines").isJsonNull()) {
+                Log.d(TAG, "No machines found in cave");
+                return items;
+            }
+
+            JsonObject machines = cave.getAsJsonObject("machines");
+            long currentTime = System.currentTimeMillis();
+            Log.d(TAG, "Found " + machines.size() + " cave machine(s)");
+
+            for (String machineId : machines.keySet()) {
+                try {
+                    JsonObject machine = machines.getAsJsonObject(machineId);
+
+                    if (!machine.has("batch") || machine.get("batch").isJsonNull()) {
+                        continue;
+                    }
+
+                    JsonObject batch = machine.getAsJsonObject("batch");
+                    if (!batch.has("readyAt") || batch.get("readyAt").isJsonNull()) {
+                        Log.d(TAG, "Cave machine " + machineId + " missing batch.readyAt");
+                        continue;
+                    }
+
+                    long readyAt = batch.get("readyAt").getAsLong();
+                    if (readyAt < 100000000000L) {
+                        readyAt = readyAt * 1000;
+                    }
+
+                    if (readyAt <= currentTime) {
+                        Log.d(TAG, "Skipping cave machine " + machineId + " - already ready/past");
+                        continue;
+                    }
+
+                    String recipe = getJsonString(batch, "recipe");
+                    if (recipe == null || recipe.isEmpty()) {
+                        recipe = "Batch";
+                    }
+
+                    FarmItem item = new FarmItem("cave", recipe, 1, readyAt);
+                    item.setId("cave_" + machineId);
+                    item.setDetails("Cave");
+                    items.add(item);
+                    Log.d(TAG, "Added cave item: " + recipe + " ready at " + formatTimestamp(readyAt));
+
+                } catch (Exception e) {
+                    Log.w(TAG, "Error processing cave machine " + machineId + ": " + e.getMessage());
+                }
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error extracting cave: " + e.getMessage(), e);
+        }
+
+        sortByTimestamp(items);
+        DebugLog.log("[DEBUG] Cave: Extracted " + items.size() + " item(s)");
+        return items;
+    }
+
+    /**
+     * Extracts pigpen notifications.
+     * Structure: farm.pigpen.animals[animalId] = { type, state, asleepAt, awakeAt, baseDurationMs }
+     * Pigs wake up (are ready) at awakeAt, which the API provides directly.
+     */
+    public static List<FarmItem> extractPigpen(JsonObject farmObject) {
+        Log.d(TAG, "Extracting pigpen animals...");
+        List<FarmItem> items = new ArrayList<>();
+
+        try {
+            if (farmObject == null) {
+                Log.d(TAG, "Farm object is null");
+                return items;
+            }
+
+            if (!farmObject.has("pigpen") || farmObject.get("pigpen").isJsonNull()) {
+                Log.d(TAG, "No pigpen found in farm data");
+                return items;
+            }
+
+            JsonObject pigpen = farmObject.getAsJsonObject("pigpen");
+            if (!pigpen.has("animals") || pigpen.get("animals").isJsonNull()) {
+                Log.d(TAG, "No animals found in pigpen");
+                return items;
+            }
+
+            JsonObject animals = pigpen.getAsJsonObject("animals");
+            long currentTime = System.currentTimeMillis();
+            Log.d(TAG, "Found " + animals.size() + " pigpen animal(s)");
+
+            for (String animalId : animals.keySet()) {
+                try {
+                    JsonObject animal = animals.getAsJsonObject(animalId);
+
+                    String type = getJsonString(animal, "type");
+                    if (type == null || type.isEmpty()) {
+                        type = "Pig";
+                    }
+
+                    if (!animal.has("awakeAt") || animal.get("awakeAt").isJsonNull()) {
+                        Log.d(TAG, "Pigpen animal " + animalId + " (" + type + ") missing awakeAt");
+                        continue;
+                    }
+
+                    long awakeAt = animal.get("awakeAt").getAsLong();
+                    if (awakeAt < 100000000000L) {
+                        awakeAt = awakeAt * 1000;
+                    }
+
+                    if (awakeAt <= currentTime) {
+                        Log.d(TAG, "Skipping pigpen " + type + " (awake): already passed");
+                        continue;
+                    }
+
+                    FarmItem item = new FarmItem("pigpen", type, 1, awakeAt);
+                    item.setId("pigpen_" + animalId);
+                    item.setDetails("Pigpen");
+                    items.add(item);
+                    Log.d(TAG, "Added pigpen item: " + type + " awake at " + formatTimestamp(awakeAt));
+
+                } catch (Exception e) {
+                    Log.w(TAG, "Error processing pigpen animal " + animalId + ": " + e.getMessage());
+                }
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error extracting pigpen: " + e.getMessage(), e);
+        }
+
+        sortByTimestamp(items);
+        DebugLog.log("[DEBUG] Pigpen: Extracted " + items.size() + " animal(s)");
+        return items;
+    }
+
+    /**
+     * Reads baseDurationMs from an API object. Present on crops, fruits, greenhouse
+     * plants and resources created under the game's speed-rate model, where the
+     * value already includes every boost that was active when the item was planted.
+     *
+     * @param data JSON object that may contain a baseDurationMs field
+     * @return duration in milliseconds, or 0 when missing/invalid
+     */
+    private static long getBaseDurationMs(JsonObject data) {
+        try {
+            if (data != null && data.has("baseDurationMs") && !data.get("baseDurationMs").isJsonNull()) {
+                long duration = data.get("baseDurationMs").getAsLong();
+                if (duration > 0) {
+                    return duration;
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error reading baseDurationMs: " + e.getMessage());
+        }
+        return 0;
+    }
+
+    /**
+     * Calculates the ready timestamp for a speed-rate item, applying any per-plot
+     * fertiliser speed window the same way the game does (getCropReadyAt /
+     * getFruitReadyAt): work accrues at 1x from startedAt until fertilisedAt, then
+     * at the fertiliser's speed for the remainder of the duration. A fertiliser
+     * applied before planting boosts the whole cycle.
+     *
+     * @param startedAt plantedAt (or harvestedAt for regrowing fruit) in ms
+     * @param baseDurationMs API-provided base duration in ms
+     * @param container object holding the optional "fertiliser" child (plot/patch/pot)
+     * @param speeds fertiliser name -> speed multiplier (> 1 means faster)
+     * @return ready timestamp in ms
+     */
+    private static long applyFertiliserSpeed(long startedAt, long baseDurationMs, JsonObject container, Map<String, Double> speeds) {
+        long defaultReady = startedAt + baseDurationMs;
+        try {
+            if (container == null || speeds == null ||
+                !container.has("fertiliser") || container.get("fertiliser").isJsonNull()) {
+                return defaultReady;
+            }
+
+            JsonObject fertiliser = container.getAsJsonObject("fertiliser");
+            Double speed = speeds.get(getJsonString(fertiliser, "name"));
+            if (speed == null || speed <= 1.0 ||
+                !fertiliser.has("fertilisedAt") || fertiliser.get("fertilisedAt").isJsonNull()) {
+                return defaultReady;
+            }
+
+            long fertilisedAt = fertiliser.get("fertilisedAt").getAsLong();
+            if (fertilisedAt <= startedAt) {
+                // Fertilised before planting/harvesting: whole cycle runs boosted
+                return startedAt + (long) (baseDurationMs / speed);
+            }
+
+            long elapsed = fertilisedAt - startedAt;
+            if (elapsed >= baseDurationMs) {
+                // Already finished before the boost started
+                return defaultReady;
+            }
+
+            // Remaining work runs at the boosted rate
+            return fertilisedAt + (long) ((baseDurationMs - elapsed) / speed);
+        } catch (Exception e) {
+            Log.w(TAG, "Error applying fertiliser speed: " + e.getMessage());
+            return defaultReady;
+        }
     }
 }

@@ -100,6 +100,11 @@ public class ClustererFactory {
             case "shrines":
                 Log.d(TAG, "Using DefaultClusterer for category: " + category);
                 return new DefaultClusterer();
+
+            case "cave":
+            case "pigpen":
+                Log.d(TAG, "Using DefaultClusterer for category: " + category);
+                return new DefaultClusterer();
             
             default:
                 Log.w(TAG, "Unknown category: " + category + ", using DefaultClusterer");

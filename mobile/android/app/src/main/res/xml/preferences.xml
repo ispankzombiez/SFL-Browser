@@ -185,6 +185,18 @@
             android:defaultValue="true" />
 
         <SwitchPreferenceCompat
+            android:key="category_cave"
+            android:title="Cave"
+            android:summary="Get notified when cave machine recipes are ready"
+            android:defaultValue="true" />
+
+        <SwitchPreferenceCompat
+            android:key="category_pigpen"
+            android:title="Pigpen"
+            android:summary="Get notified when your pigs wake up"
+            android:defaultValue="true" />
+
+        <SwitchPreferenceCompat
             android:key="category_shrines"
             android:title="Shrines"
             android:summary="Get notified when shrines expire"

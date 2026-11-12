@@ -314,6 +314,24 @@ public class NotificationReceiver extends BroadcastReceiver {
                 // Aging shed notifications are grouped per rack type (Aging/Fermenting/Spice).
                 notificationTitle = itemName + " is done!";
                 notificationText = (details != null && !details.trim().isEmpty()) ? details : "Ready to collect";
+            } else if ("cave".equals(category)) {
+                // Cave machine notification - grouped by recipe
+                if (count > 1) {
+                    notificationTitle = count + " " + itemName + " batches ready!";
+                    notificationText = "Collect your cave batches";
+                } else {
+                    notificationTitle = "Cave " + itemName + " is ready!";
+                    notificationText = "Collect your cave batch";
+                }
+            } else if ("pigpen".equals(category)) {
+                // Pigpen notification - grouped by animal type
+                if (count > 1) {
+                    notificationTitle = count + " " + itemName + "s are awake!";
+                    notificationText = "Collect your pigs from the pigpen";
+                } else {
+                    notificationTitle = itemName + " is awake!";
+                    notificationText = "Collect your pig from the pigpen";
+                }
             } else if ("crab_traps".equals(category)) {
                 // Crab trap notification - grouped by time window
                 if (count > 1) {
