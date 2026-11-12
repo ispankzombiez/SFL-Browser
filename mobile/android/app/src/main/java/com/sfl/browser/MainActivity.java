@@ -198,6 +198,10 @@ public class MainActivity extends BridgeActivity {
     private int webviewIndexInParent = -1;
     private static final int NOTIFICATION_PERMISSION_REQUEST_CODE = 100;
     private static final int AUDIO_PERMISSION_REQUEST_CODE = 101;
+    // Long-press icon shortcut action: full reload of the game (see res/xml/shortcuts.xml)
+    private static final String ACTION_RELOAD = "com.sfl.browser.action.RELOAD";
+    // Whether WebViews were paused in onPause (only when pause_webview_on_background toggle is on)
+    private boolean webviewsPaused = false;
     
     private android.widget.LinearLayout browserControlsBar;
     private android.widget.ImageButton btnBack, btnForward;
@@ -300,6 +304,34 @@ public class MainActivity extends BridgeActivity {
                 return false;
             });
             popup.show();
+        });
+
+        // Modern back handling (replaces deprecated onBackPressed override).
+        // 1) Dismiss the tab overview overlay if it's showing
+        // 2) Otherwise navigate WebView history
+        // 3) Otherwise fall through to default behavior (exit)
+        getOnBackPressedDispatcher().addCallback(this, new androidx.activity.OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                try {
+                    View overlay = getWindow().getDecorView().findViewWithTag("tab_overview_overlay");
+                    if (overlay != null && overlay.getParent() instanceof android.view.ViewGroup) {
+                        ((android.view.ViewGroup) overlay.getParent()).removeView(overlay);
+                        Log.d("MainActivity", "Back pressed - dismissed tab overview overlay");
+                        return;
+                    }
+                } catch (Exception ignore) { }
+
+                if (mainWebView != null && mainWebView.canGoBack()) {
+                    Log.d("MainActivity", "Going back in WebView history");
+                    mainWebView.goBack();
+                } else {
+                    Log.d("MainActivity", "No WebView history, performing default back action");
+                    setEnabled(false);
+                    getOnBackPressedDispatcher().onBackPressed();
+                    setEnabled(true);
+                }
+            }
         });
 
         // URL bar behavior
@@ -1024,8 +1056,7 @@ public class MainActivity extends BridgeActivity {
             ws.setSupportZoom(true);
             ws.setGeolocationEnabled(true);
             
-            // Enable rendering optimizations
-            ws.setRenderPriority(WebSettings.RenderPriority.HIGH);
+            // (Removed deprecated setRenderPriority — no-op since API 19)
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                 ws.setSafeBrowsingEnabled(false); // Reduce overhead
             }
@@ -1061,6 +1092,24 @@ public class MainActivity extends BridgeActivity {
             });
 
             wv.setWebViewClient(new android.webkit.WebViewClient() {
+                @Override
+                public boolean onRenderProcessGone(WebView view, android.webkit.RenderProcessGoneDetail detail) {
+                    // Renderer crashed/killed - recover by recreating instead of crashing (YakBrowser pattern)
+                    Log.e("MainActivity", "Tab WebView renderer gone (crashed=" + detail.didCrash() + ") - recreating activity");
+                    try {
+                        if (view != null) {
+                            try { view.destroy(); } catch (Exception ignore) { }
+                        }
+                    } catch (Exception ignore) { }
+                    try {
+                        recreate();
+                    } catch (Exception e) {
+                        Log.e("MainActivity", "Failed to recreate after tab renderer crash", e);
+                        finish();
+                    }
+                    return true;
+                }
+
                 @Override
                 public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
                     Log.d("MainActivity", "(tab) onPageStarted: " + url);
@@ -1409,6 +1458,27 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onDestroy() {
         try {
+            // Stop and destroy tab WebViews (2 & 3) so their render processes don't leak.
+            // Tab 1 is the Capacitor bridge WebView — owned by the bridge, which
+            // BridgeActivity.onDestroy() tears down after super.onDestroy().
+            for (int i = 1; i < tabWebViews.length; i++) {
+                WebView wv = tabWebViews[i];
+                if (wv != null) {
+                    try { wv.stopLoading(); } catch (Exception ignore) { }
+                    try { wv.setWebChromeClient(null); } catch (Exception ignore) { }
+                    try { wv.setWebViewClient(null); } catch (Exception ignore) { }
+                    try { wv.destroy(); } catch (Exception ignore) { }
+                    tabWebViews[i] = null;
+                    Log.d("MainActivity", "onDestroy: destroyed tab " + (i + 1) + " WebView");
+                }
+            }
+            try {
+                if (mainWebView != null) mainWebView.stopLoading();
+            } catch (Exception ignore) { }
+        } catch (Exception e) {
+            Log.w("MainActivity", "onDestroy: WebView cleanup failed", e);
+        }
+        try {
             if (prefs != null && prefListener != null) prefs.unregisterOnSharedPreferenceChangeListener(prefListener);
         } catch (Exception ignore) { }
         super.onDestroy();
@@ -1543,7 +1613,9 @@ public class MainActivity extends BridgeActivity {
                 ws.setAllowContentAccess(true);
                 ws.setAllowUniversalAccessFromFileURLs(true);
                 ws.setAllowFileAccessFromFileURLs(true);
-                ws.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+                // Mixed content: single canonical setting is set further below
+                // (MIXED_CONTENT_COMPATIBILITY_MODE) — the earlier ALWAYS_ALLOW sets were
+                // dead code because they were overwritten later in this method.
                 ws.setJavaScriptCanOpenWindowsAutomatically(true);
                 ws.setMediaPlaybackRequiresUserGesture(false);
                 
@@ -1567,8 +1639,7 @@ public class MainActivity extends BridgeActivity {
                     ws.setSafeBrowsingEnabled(false); // Reduce overhead
                 }
                 
-                // Enable smooth rendering during panning/scrolling
-                ws.setRenderPriority(WebSettings.RenderPriority.HIGH);
+                // (Removed deprecated setRenderPriority — no-op since API 19)
                 
                 // Set User-Agent to make Google accept this as a secure browser
                 String defaultUserAgent = ws.getUserAgentString();
@@ -1581,9 +1652,7 @@ public class MainActivity extends BridgeActivity {
                 Log.d("MainActivity", "Set User-Agent: " + customUserAgent);
                 
                 // Additional settings to make WebView appear as a standard browser
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    ws.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-                }
+                // (Removed duplicate setMixedContentMode — canonical setting is below)
                 
                 // Enable geolocation and other browser features
                 ws.setGeolocationEnabled(true);
@@ -1593,16 +1662,20 @@ public class MainActivity extends BridgeActivity {
                 
                 // Security settings that help with Google OAuth
                 ws.setSaveFormData(false);
-                ws.setSavePassword(false);
+                // (Removed deprecated setSavePassword — no-op since API 18)
                 
-                // Enable storage APIs
+                // Canonical mixed-content policy for the bridge WebView
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                     ws.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
                 }
                 
-                // Enable remote debugging and console logging
+                // Enable remote debugging and console logging (DEBUG BUILDS ONLY -
+                // shipping this in release lets anyone with USB access inspect the WebView)
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
-                    WebView.setWebContentsDebuggingEnabled(true);
+                    boolean isDebuggable = (getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+                    if (isDebuggable) {
+                        WebView.setWebContentsDebuggingEnabled(true);
+                    }
                 }
                 
                 // Add JavaScript interface for WebView functionality
@@ -1687,6 +1760,25 @@ public class MainActivity extends BridgeActivity {
                     }
                 });
                 wv.setWebViewClient(new android.webkit.WebViewClient() {
+                    @Override
+                    public boolean onRenderProcessGone(WebView view, android.webkit.RenderProcessGoneDetail detail) {
+                        // Renderer crashed/killed (e.g., OOM) - recover by recreating the activity
+                        // instead of letting the app die (pattern from YakBrowser).
+                        Log.e("MainActivity", "Bridge WebView renderer gone (crashed=" + detail.didCrash() + ") - recreating activity");
+                        try {
+                            if (view != null) {
+                                try { view.destroy(); } catch (Exception ignore) { }
+                            }
+                        } catch (Exception ignore) { }
+                        try {
+                            recreate();
+                        } catch (Exception e) {
+                            Log.e("MainActivity", "Failed to recreate after renderer crash", e);
+                            finish();
+                        }
+                        return true;
+                    }
+
                     @Override
                     public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
                         Log.d("MainActivity", ">>> onPageStarted: " + url);
@@ -2209,15 +2301,59 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onResume() {
         super.onResume();
+
+        // Resume WebViews paused in onPause() (toggle: pause_webview_on_background)
+        if (webviewsPaused) {
+            webviewsPaused = false;
+            for (WebView wv : tabWebViews) {
+                try {
+                    if (wv != null) wv.onResume();
+                } catch (Exception ignore) { }
+            }
+            Log.d("MainActivity", "onResume: resumed WebViews after background pause");
+        }
+
         handleIntent(getIntent());
         // Periodically clear cache to manage data usage
         clearOldCache();
     }
 
     @Override
+    public void onPause() {
+        super.onPause();
+        // Pause WebView timers/rendering while backgrounded so the game doesn't keep
+        // running (and burning CPU/battery) behind other apps. Gated behind the
+        // pause_webview_on_background toggle so users can opt out if it causes issues.
+        try {
+            if (prefs == null) prefs = PreferenceManager.getDefaultSharedPreferences(this);
+            if (prefs.getBoolean("pause_webview_on_background", true)) {
+                for (WebView wv : tabWebViews) {
+                    try {
+                        if (wv != null) wv.onPause();
+                    } catch (Exception ignore) { }
+                }
+                webviewsPaused = true;
+                Log.d("MainActivity", "onPause: paused WebViews (pause_webview_on_background=on)");
+            }
+        } catch (Exception e) {
+            Log.w("MainActivity", "onPause: failed to pause WebViews", e);
+        }
+    }
+
+    @Override
     protected void onNewIntent(Intent intent) {
         Log.d("MainActivity", "onNewIntent called with action: " + (intent != null ? intent.getAction() : "null"));
         super.onNewIntent(intent);
+
+        // Long-press icon "Reload" shortcut: do a full recreate for a guaranteed fresh WebView
+        // (modeled after YakBrowser — recreate() skips state restoration and always lands fresh).
+        if (intent != null && ACTION_RELOAD.equals(intent.getAction())) {
+            Log.d("MainActivity", "Reload shortcut received - recreating activity");
+            setIntent(intent);
+            recreate();
+            return;
+        }
+
         handleIntent(intent);
     }
 
@@ -2849,10 +2985,39 @@ public class MainActivity extends BridgeActivity {
             }
 
             if (wv != null) {
-                Log.d("MainActivity", "Attaching WebChromeClient (WebViewClient already set in setupJavaScriptInterface)");
+                Log.d("MainActivity", "Attaching unified WebChromeClient (popup handling + console/progress logging)");
                 
-                // WebViewClient is already unified in setupJavaScriptInterface - only set WebChromeClient here for popup handling
+                // FIX: this client previously REPLACED the one set in setupJavaScriptInterface(),
+                // silently losing onConsoleMessage/onProgressChanged/onReceivedTitle handling.
+                // It now includes those handlers so only one WebChromeClient is ever effective,
+                // while preserving the live popup behavior (open in popup WebView, block Coinbase).
                 wv.setWebChromeClient(new android.webkit.WebChromeClient() {
+                    @Override
+                    public boolean onConsoleMessage(android.webkit.ConsoleMessage cm) {
+                        String message = cm.message();
+                        Log.d("WebView Console", String.format("[%s:%d] %s", cm.sourceId(), cm.lineNumber(), message));
+                        if (message.contains("[SUNFLOWER]")) {
+                            Log.i("NOTIFICATION_DEBUG", "🌻 " + message);
+                        }
+                        return true;
+                    }
+
+                    @Override
+                    public void onProgressChanged(WebView view, int newProgress) {
+                        super.onProgressChanged(view, newProgress);
+                        // Force redraw to prevent white flashes during animations
+                        view.invalidate();
+                    }
+
+                    @Override
+                    public void onReceivedTitle(WebView view, String title) {
+                        super.onReceivedTitle(view, title);
+                        if (title != null && title.startsWith("FARM_DATA:")) {
+                            String jsonData = title.substring(10);
+                            Log.e("🎮 EXTRACTED_DATA", "Farm storage data: " + jsonData);
+                        }
+                    }
+
                     @Override
                     public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture, Message resultMsg) {
                         // Create a new WebView for the popup window
@@ -2869,6 +3034,12 @@ public class MainActivity extends BridgeActivity {
                                 if (url.contains("keys.coinbase.com") || url.contains("coinbase.com") || url.contains("login.coinbase")) {
                                     Log.d("MainActivity", "BLOCKED: Coinbase URL in popup: " + url);
                                     return true;  // Block the load
+                                }
+                                
+                                // Route wallet/deep-link schemes out of the popup to the right handler
+                                if (tryHandleDeepLink(url)) {
+                                    Log.d("MainActivity", "Deep link handled externally from popup: " + url);
+                                    return true;
                                 }
                                 
                                 return false;  // Allow other URLs
@@ -2892,19 +3063,9 @@ public class MainActivity extends BridgeActivity {
         }
     }
     
-    @Override
-    public void onBackPressed() {
-        // Check if WebView can go back in history
-        if (mainWebView != null && mainWebView.canGoBack()) {
-            Log.d("MainActivity", "Going back in WebView history");
-            mainWebView.goBack();
-        } else {
-            // If no WebView history, perform default back behavior (exit app)
-            Log.d("MainActivity", "No WebView history, performing default back action");
-            super.onBackPressed();
-        }
-    }
-    
+    // Back button handling moved to OnBackPressedDispatcher callback in onCreate()
+    // (also dismisses the tab overview overlay, which the old override missed).
+
     // Method to manually extract all game data
     public void extractGameData() {
         if (mainWebView != null) {

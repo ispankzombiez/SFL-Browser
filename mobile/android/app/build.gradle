@@ -14,8 +14,8 @@ android {
         applicationId "com.sfl.browser"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-    versionCode 45
-    versionName "1.0.045"
+    versionCode 46
+    versionName "1.0.046"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         
         ndk {

@@ -12,4 +12,8 @@
     <string name="pref_orientation_auto">Auto</string>
     <string name="pref_orientation_portrait">Portrait</string>
     <string name="pref_orientation_landscape">Landscape</string>
+    <string name="shortcut_settings_short">Settings</string>
+    <string name="shortcut_settings_long">SFL Browser settings</string>
+    <string name="shortcut_reload_short">Reload</string>
+    <string name="shortcut_reload_long">Reload game</string>
 </resources>

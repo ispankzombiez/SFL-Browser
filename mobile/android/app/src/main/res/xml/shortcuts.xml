@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Static launcher shortcuts (long-press app icon).
+    Modeled after YakBrowser's shortcuts.xml.
+    NOTE: framework attributes must be android:shortcutShortLabel / android:shortcutLongLabel
+    (plain shortLabel/longLabel do not exist and fail AAPT). Labels must be @string/ refs.
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <shortcut
+        android:shortcutId="settings"
+        android:enabled="true"
+        android:icon="@drawable/ic_settings"
+        android:shortcutShortLabel="@string/shortcut_settings_short"
+        android:shortcutLongLabel="@string/shortcut_settings_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.sfl.browser"
+            android:targetClass="com.sfl.browser.SettingsActivity" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="reload"
+        android:enabled="true"
+        android:icon="@drawable/ic_reload"
+        android:shortcutShortLabel="@string/shortcut_reload_short"
+        android:shortcutLongLabel="@string/shortcut_reload_long">
+        <intent
+            android:action="com.sfl.browser.action.RELOAD"
+            android:targetPackage="com.sfl.browser"
+            android:targetClass="com.sfl.browser.MainActivity" />
+    </shortcut>
+
+</shortcuts>

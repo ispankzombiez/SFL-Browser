@@ -60,6 +60,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.GAME" />
             </intent-filter>
+
+            <!-- Static long-press app icon shortcuts (Settings / Reload) -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
             
             <!-- Comprehensive wallet scheme handler for deep link routing -->
             <!-- This app acts as the primary handler for all wallet-related URI schemes.
@@ -198,6 +203,12 @@
         <activity
             android:name=".SkillSettingsActivity"
             android:label="Skill Cooldown Notifications"
+            android:theme="@style/AppTheme.NoActionBar"
+            android:parentActivityName=".SettingsActivity" />
+
+        <activity
+            android:name=".CraftingSettingsActivity"
+            android:label="Crafting Notifications"
             android:theme="@style/AppTheme.NoActionBar"
             android:parentActivityName=".SettingsActivity" />
 

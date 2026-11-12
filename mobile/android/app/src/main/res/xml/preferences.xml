@@ -61,6 +61,11 @@
             android:title="Aggressive Caching"
             android:summary="Save mobile data by aggressively caching content (default: OFF). When ON, loads cached content first. When OFF, normal caching is used."
             android:defaultValue="false" />
+        <SwitchPreferenceCompat
+            android:key="pause_webview_on_background"
+            android:title="Pause Game When Backgrounded"
+            android:summary="Pause the game while the app is in the background to save battery (default: ON). When OFF, the game keeps running behind other apps."
+            android:defaultValue="true" />
         <EditTextPreference
             android:key="home_page"
             android:title="Home page"
