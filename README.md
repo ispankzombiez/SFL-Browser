@@ -31,6 +31,8 @@ For a signed release, copy [`signing.properties.template`](./signing.properties.
 
 In GitHub, open **Actions → Android Release Build → Run workflow** and select `main`. The workflow runs unit tests and publishes the verified, signed APK to GitHub Releases. It uses the repository's existing signing secrets: `RELEASE_KEYSTORE` (base64), `KEYSTORE_PASSWORD`, `KEY_ALIAS`, and `KEY_PASSWORD`. Pushing code does not start the release workflow.
 
+GitHub APKs must match the signing certificate of the previously published GitHub APK so existing installations can update in place. That certificate differs from the original local APK's certificate; do not substitute the local key for the GitHub release key.
+
 For Google Play, build the AAB locally with `:app:bundleRelease`, use the upload key registered in Play Console, and upload the bundle manually. The GitHub workflow does not build or upload the AAB.
 
 ## Project layout
