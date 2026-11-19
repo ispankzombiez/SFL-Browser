@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<merge xmlns:android="http://schemas.android.com/apk/res/android">
+    <TextView
+        style="@style/SettingsLabel"
+        android:text="@string/tut_intro" />
+
+    <TextView
+        style="@style/SettingsHeading"
+        android:text="@string/tut_setup_heading" />
+
+    <TextView
+        style="@style/SettingsLabel"
+        android:text="@string/tut_setup" />
+
+    <TextView
+        style="@style/SettingsHeading"
+        android:text="@string/tut_categories_heading" />
+
+    <TextView
+        style="@style/SettingsLabel"
+        android:text="@string/tut_categories" />
+
+    <TextView
+        style="@style/SettingsHeading"
+        android:text="@string/tut_delivery_heading" />
+
+    <TextView
+        style="@style/SettingsLabel"
+        android:text="@string/tut_delivery" />
+
+    <TextView
+        style="@style/SettingsHeading"
+        android:text="@string/tut_browser_heading" />
+
+    <TextView
+        style="@style/SettingsLabel"
+        android:text="@string/tut_browser" />
+
+    <TextView
+        style="@style/SettingsHeading"
+        android:text="@string/tut_screens_heading" />
+
+    <TextView
+        style="@style/SettingsLabel"
+        android:text="@string/tut_screens" />
+
+    <TextView
+        style="@style/SettingsHeading"
+        android:text="@string/tut_prices_heading" />
+
+    <TextView
+        style="@style/SettingsLabel"
+        android:text="@string/tut_prices" />
+
+    <TextView
+        style="@style/SettingsHeading"
+        android:text="@string/tut_help_heading" />
+
+    <TextView
+        style="@style/SettingsLabel"
+        android:text="@string/tut_help" />
+
+    <Button
+        android:id="@+id/tutorialDiscord"
+        style="@style/SettingsLinkButton"
+        android:text="@string/tut_discord_button" />
+
+    <Button
+        android:id="@+id/tutorialGithub"
+        style="@style/SettingsLinkButton"
+        android:text="@string/settings_github" />
+</merge>

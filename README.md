@@ -1,181 +1,44 @@
-[🌐 Visit the Project Website](https://ispankzombiez.github.io/SFL-Browser/)
+# SFL Browser
 
-# Sunflower Land Unofficial Android App
+SFL Browser is an unofficial Android browser and notification companion for [Sunflower Land](https://sunflower-land.com/). It is a native Kotlin app and does not require Capacitor or Node.js.
 
-An unofficial Android mobile app for [Sunflower Land](https://sunflower-land.com/) built with Capacitor and WalletConnect. This app provides a mobile-optimized WebView experience with integrated Web3 wallet connectivity and native Android push-notifications.
+[Project website and privacy policy](https://ispankzombiez.github.io/SFL-Browser/) · [Google Play](https://play.google.com/store/apps/details?id=com.sfl.browser) · [GitHub Releases](https://github.com/ispankzombiez/SFL-Browser/releases) · [Support](https://discord.com/channels/880987707214544966/1314031342182338651)
 
-## 🚀 Features
+## Using the app
 
-- **Mobile WebView**: Full Sunflower Land game experience in a native Android app
-- **WalletConnect v2**: Seamless wallet connectivity with MetaMask and other supported wallets
-- **Multi-Wallet Support**: Connect various Ethereum wallets via WalletConnect
-- **EIP-1193 Provider**: Injected Web3 provider for dApp compatibility
-- **Native Android UI**: Optimized for mobile gaming experience
-- **Native Android Push Notifications**
+- **Full browser** opens the game in the built-in browser. The browser layout and native colors are customizable, and the game can initiate supported WalletConnect connections.
+- **Notifications only** lets you use farm and price alerts without opening the built-in browser.
+- Long-press the launcher icon for **Overview**, **Timeline**, and **Settings** shortcuts.
 
-## 🧪 Become a Tester!
+To set up alerts, allow Android notifications and open **Settings → Farm & Sync**. Enter your **Farm ID** and **Sunflower Land API key**, then tap **Run a check now** to verify the setup. The relevant in-game menu is **Settings → three-dot menu**: the Farm ID is at the top, and the API key is under **General → API Key**. Exact alarms and ignoring battery optimisation are optional and can be changed later.
 
-Want to try the app before anyone else? Join our early access program!
+## Building from source
 
-📝 **[Fill out this form](https://forms.gle/Wc5oQVWpg8nT8ycB8)** to request early access
+Use JDK 17 and the Android SDK with Android 16 (API 36). Open the repository root in Android Studio, or run these Gradle commands from the root:
 
+| Task | Windows PowerShell | macOS/Linux |
+| --- | --- | --- |
+| Run unit tests | `.\gradlew.bat :app:testDebugUnitTest` | `sh ./gradlew :app:testDebugUnitTest` |
+| Build a debug APK | `.\gradlew.bat :app:assembleDebug` | `sh ./gradlew :app:assembleDebug` |
+| Build a release APK | `.\gradlew.bat :app:assembleRelease` | `sh ./gradlew :app:assembleRelease` |
+| Build a Google Play AAB | `.\gradlew.bat :app:bundleRelease` | `sh ./gradlew :app:bundleRelease` |
 
-📱 Once early-access has been granted, you can download the app on Google Play **[here](https://play.google.com/store/apps/details?id=com.sfl.browser)**
+If needed, set `ANDROID_HOME` or let Android Studio create a local `local.properties` file. APKs are written to `app/build/outputs/apk/`, and the release AAB is written to `app/build/outputs/bundle/release/`.
 
-🔗 Or download the latest APK directly from GitHub Releases: **[Go to Latest Release Page](https://github.com/ispankzombiez/Sunflower-Land-Unoffical-Android-App/releases/latest)**
+For a signed release, copy [`signing.properties.template`](./signing.properties.template) to `signing.properties` at the repository root and supply the appropriate keystore path, alias, and passwords. Use an absolute keystore path, or a path relative to `app/`. Never commit signing credentials, the keystore, a farm API key, or private farm data.
 
-The APK is named <code>SFL-Browser-v[version].apk</code> and is always available on the latest release page.
+## Publishing releases
 
-💬 For more info, or to reach out to the developer iSPANK, go **[here](https://discord.com/channels/880987707214544966/1314031342182338651)**
+In GitHub, open **Actions → Android Release Build → Run workflow** and select `main`. The workflow runs unit tests and publishes the verified, signed APK to GitHub Releases. It uses the repository's existing signing secrets: `RELEASE_KEYSTORE` (base64), `KEYSTORE_PASSWORD`, `KEY_ALIAS`, and `KEY_PASSWORD`. Pushing code does not start the release workflow.
 
-## 📱 Screenshots
+For Google Play, build the AAB locally with `:app:bundleRelease`, use the upload key registered in Play Console, and upload the bundle manually. The GitHub workflow does not build or upload the AAB.
 
-*Screenshots coming soon*
+## Project layout
 
-## 🛠️ Prerequisites
+- [`app/src/main/`](./app/src/main/) — Android app, resources, and bundled assets
+- [`app/src/test/`](./app/src/test/) — unit tests
+- [`docs/`](./docs/) — project website and privacy policy
 
-Before building the app, make sure you have:
+## License and disclaimer
 
-- **Node.js** (v16 or later)
-- **Android Studio** with Android SDK
-- **Android emulator** or physical device for testing
-- **Java JDK 11** or later
-
-## 🏗️ Project Structure
-
-```
-├── mobile/                 # Capacitor mobile app source
-│   ├── src/               # Web app source code
-│   ├── android/           # Android native project
-│   └── README_ANDROID.md  # Detailed Android setup guide
-├── www/                   # Built web assets (generated)
-├── .github/               # GitHub workflows and templates
-└── package.json           # Root dependencies
-```
-
-## 🚀 Quick Start
-
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/ispankzombiez/Sunflower-Land-Unoffical-Android-App.git
-cd Sunflower-Land-Unoffical-Android-App
-```
-
-### 2. Install Dependencies
-
-```bash
-# Install root dependencies
-npm install
-
-# Install mobile app dependencies
-cd mobile
-npm install
-```
-
-### 3. Configure Signing (for release builds)
-
-Copy the signing template and add your credentials:
-
-```bash
-cp mobile/android/gradle.properties.template mobile/android/signing.properties
-```
-
-Edit `mobile/android/signing.properties` with your keystore details:
-
-```properties
-RELEASE_STORE_FILE=path/to/your/keystore.jks
-RELEASE_STORE_PASSWORD=your_store_password
-RELEASE_KEY_ALIAS=your_key_alias
-RELEASE_KEY_PASSWORD=your_key_password
-```
-
-### 4. Build and Run
-
-```bash
-# Build the web assets
-npm run build
-
-# Copy to Android and open in Android Studio
-npx cap copy android
-npx cap open android
-```
-
-### 5. Run in Android Studio
-
-- Create an AVD (Android Virtual Device) with Google Play Services
-- Build and run the project
-- The app will launch with WalletConnect integration ready
-
-## 🔧 Development
-
-### Development Build
-
-```bash
-cd mobile
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run clean        # Clean build artifacts
-```
-
-### Android Development
-
-See the detailed guide in [`mobile/README_ANDROID.md`](mobile/README_ANDROID.md) for:
-- Android Studio setup
-- Emulator configuration
-- Native development workflow
-- Debugging tips
-
-## 🌐 WalletConnect Setup
-
-1. Get your WalletConnect Project ID from [WalletConnect Cloud](https://cloud.walletconnect.com/)
-2. Enter it in the app when prompted
-3. Scan the QR code with your mobile wallet (MetaMask, etc.)
-4. Enjoy playing Sunflower Land with your connected wallet!
-
-## 📂 Key Files
-
-- `mobile/src/index.js` - Main app entry point
-- `mobile/src/inject-shim.js` - EIP-1193 provider injection
-- `mobile/android/app/build.gradle` - Android build configuration
-- `.gitignore` - Excludes sensitive files and build artifacts
-
-## 🛡️ Security
-
-- Signing credentials are kept in `signing.properties` (not committed to git)
-- API keys and sensitive data are excluded from version control
-- All builds require proper signing configuration
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Commit changes: `git commit -m 'Add feature'`
-4. Push to branch: `git push origin feature-name`
-5. Open a pull request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## ⚠️ Disclaimer
-
-This is an **unofficial** app and is not affiliated with, endorsed by, or connected to Sunflower Land or its developers. Use at your own risk.
-
-## 🐛 Issues & Support
-
-If you encounter any issues:
-
-1. Check the [Issues](https://github.com/ispankzombiez/Sunflower-Land-Unoffical-Android-App/issues) page
-2. Create a new issue with detailed information
-3. Include device info, Android version, and error logs
-
-## 🙏 Acknowledgments
-
-- [Sunflower Land](https://sunflower-land.com/play/?ref=iSPANK) - The amazing game this app is built for
-- [Capacitor](https://capacitorjs.com/) - Cross-platform native runtime
-- [WalletConnect](https://walletconnect.com/) - Web3 wallet connectivity protocol
-
-
-## 🙏 An iSPANK Original
-https://wiki.sfl.world/en/user-pages/iSPANK's-Tools
+The project is distributed under the [MIT License](./LICENSE). SFL Browser is a community project and is not affiliated with or endorsed by Sunflower Land or its developers.

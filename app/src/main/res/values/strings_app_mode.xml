@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mode_disclaimer_title">Before you start</string>
+    <string name="mode_disclaimer_message">SFL Browser is an unofficial community app. It is not affiliated with or endorsed by Sunflower Land or its developers. Use it at your own discretion.\n\nChoose Full browser to play Sunflower Land here and receive farm alerts, or Notifications only to keep the alerts without opening the in-app browser. You can change this anytime in Settings.</string>
+    <string name="mode_notifications_only">Notifications only</string>
+    <string name="mode_full_browser">Full browser</string>
+    <string name="notification_setup_title">Set up farm notifications</string>
+    <string name="notification_setup_message">Farm notifications aren’t set up yet. Enter your Sunflower Land API key and Farm ID in Settings → Farm &amp; Sync so the app can check your farm and send alerts.</string>
+    <string name="notification_setup_ignore">Ignore</string>
+    <string name="notification_setup_settings">Go to settings</string>
+    <string name="help_notifications_only">When on, the app opens to Settings and the built-in browser is disabled. Your alerts, Overview, and Timeline still work.</string>
+    <string name="notification_app_title">Open when a notification is tapped</string>
+    <string name="notification_app_current">Notification destination: %1$s</string>
+    <string name="notification_app_unavailable">%1$s (unavailable)</string>
+    <string name="notification_app_open_failed">Couldn’t open the selected app. Opening Settings instead.</string>
+    <string name="notification_app_link_failed">The selected app couldn’t open this farm link. Trying your browser instead.</string>
+</resources>

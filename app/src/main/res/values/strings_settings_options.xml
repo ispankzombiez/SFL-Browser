@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="section_appearance">Appearance</string>
+    <string name="label_native_font_size">App font size</string>
+    <string name="label_native_font_size_current">App font size: %1$d%%</string>
+    <string name="help_native_font_size">Changes native app text, not the text on websites.</string>
+    <string name="format_native_font_size">%1$d%%</string>
+    <string name="custom_native_font_size">Custom…</string>
+    <string name="custom_native_font_size_hint">Percentage (for example, 110)</string>
+    <string name="custom_native_font_size_error">Enter a positive whole-number percentage.</string>
+    <string name="category_chicken_feeding">Chicken feeding</string>
+    <string name="category_cow_feeding">Cow feeding</string>
+    <string name="category_sheep_feeding">Sheep feeding</string>
+    <string name="category_pig_feeding">Pig feeding</string>
+    <string name="crop_machine_all_done">Crop Machine: only when all packs are done</string>
+    <string name="help_crop_machine_all_done">Send one completion alert for the entire queue. The Crop Machine category also alerts separately if the machine runs out of oil while packs still need to grow.</string>
+    <string name="notif_feed_group">%1$s ×%2$d</string>
+    <string name="notif_machine_no_oil">Crop Machine out of oil</string>
+    <string name="notif_machine_add_oil">Add oil to resume growing the remaining packs.</string>
+    <string name="label_home_tabs">Additional home tabs</string>
+    <string name="help_home_tabs">New installs start with sfl.world and Sfl Wiki alongside Home. You can edit, remove, or add tabs here. To change where Home opens, change the Home URL above.</string>
+    <string name="btn_add_home_tab">Add home tab</string>
+    <string name="label_home_tab_name">Tab name</string>
+    <string name="label_home_tab_url">Website URL</string>
+    <string name="btn_remove_home_tab">Remove</string>
+    <string name="desc_remove_home_tab">Remove %1$s tab</string>
+    <string name="err_home_tab_name">Enter a name for this tab.</string>
+    <string name="err_home_tab_url">Enter a complete HTTP or HTTPS website URL, without a username or password.</string>
+
+    <string name="check_running_button">Running%1$s</string>
+    <plurals name="check_rate_limit_wait">
+        <item quantity="one">Waiting %1$d second before continuing</item>
+        <item quantity="other">Waiting %1$d seconds before continuing</item>
+    </plurals>
+    <string name="check_rate_limited_stop">Stopped due to the API rate limit. Remaining checks were not run.</string>
+    <string name="check_complete_success">Check succeeded.</string>
+    <string name="check_complete_partial">Check partially succeeded.</string>
+    <string name="check_complete_failure">Check failed.</string>
+    <string name="check_complete_cancelled">Check was cancelled.</string>
+    <string name="check_complete_unavailable">Check finished without details.</string>
+    <string name="check_enqueue_failed">Check could not be queued. No checks ran.</string>
+    <string name="check_not_started">Check not started. %1$s</string>
+    <string name="check_nothing_ran">No checks ran.</string>
+    <string name="check_result_format">%1$s\n%2$s</string>
+    <string name="check_result_entry">%1$s: %2$s</string>
+    <string name="check_completed">completed</string>
+    <string name="check_timers">Farm timers</string>
+    <string name="check_events">Event processing</string>
+    <string name="check_raffles">Raffles</string>
+    <string name="check_auctions">Auctions</string>
+    <string name="check_sales">Sales</string>
+    <string name="check_prices">Price alerts</string>
+    <string name="check_prices_no_alerts">skipped — no alerts configured</string>
+    <string name="check_prices_counts">%1$d of %2$d completed</string>
+    <string name="check_error_http">HTTP %1$d</string>
+    <string name="check_error_no_key">API key unavailable</string>
+    <string name="check_error_throttled">rate limited — try again later</string>
+    <string name="check_error_request">network or response error</string>
+    <string name="check_error_response">incomplete API response</string>
+    <string name="check_error_unexpected">unexpected error</string>
+    <string name="label_batched_price_checks">Use batched price checks</string>
+    <string name="help_batched_price_checks">On: Check all watched items in one request using a marketplace snapshot that updates about once a minute. Off: Check live prices with one request per item.</string>
+</resources>

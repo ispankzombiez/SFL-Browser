@@ -1,113 +1,112 @@
-
 name: Android Release Build
-permissions:
-  contents: write
 
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
+concurrency: android-release
+
 jobs:
   build:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    env:
-      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: '17'
 
-      - name: Decode keystore
-        run: |
-          echo "$RELEASE_KEYSTORE" | base64 -d > mobile/android/app/sunflower-land-unofficial.jks
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-36" "build-tools;36.1.0"
+
+      - name: Run unit tests
+        run: bash ./gradlew --no-daemon :app:testDebugUnitTest
+
+      - name: Build and verify signed APK
+        id: apk
         env:
           RELEASE_KEYSTORE: ${{ secrets.RELEASE_KEYSTORE }}
-
-      - name: Create signing properties
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          echo "RELEASE_STORE_FILE=sunflower-land-unofficial.jks" > mobile/android/signing.properties
-          echo "RELEASE_STORE_PASSWORD=$KEYSTORE_PASSWORD" >> mobile/android/signing.properties
-          echo "RELEASE_KEY_ALIAS=$KEY_ALIAS" >> mobile/android/signing.properties
-          echo "RELEASE_KEY_PASSWORD=$KEY_PASSWORD" >> mobile/android/signing.properties
+          set -euo pipefail
+          umask 077
+          export KEYSTORE_PATH
+          KEYSTORE_PATH=$(mktemp "$RUNNER_TEMP/sfl-release.XXXXXX")
+          trap 'rm -f -- "$KEYSTORE_PATH" signing.properties' EXIT
+          : "${RELEASE_KEYSTORE:?Missing RELEASE_KEYSTORE secret}"
+          : "${KEYSTORE_PASSWORD:?Missing KEYSTORE_PASSWORD secret}"
+          : "${KEY_ALIAS:?Missing KEY_ALIAS secret}"
+          : "${KEY_PASSWORD:?Missing KEY_PASSWORD secret}"
+          printf '%s' "$RELEASE_KEYSTORE" | base64 --decode > "$KEYSTORE_PATH"
 
-      - name: Grant execute permission to gradlew
-        run: chmod +x mobile/android/gradlew
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
+          keys = {
+              "RELEASE_STORE_FILE": "KEYSTORE_PATH",
+              "RELEASE_STORE_PASSWORD": "KEYSTORE_PASSWORD",
+              "RELEASE_KEY_ALIAS": "KEY_ALIAS",
+              "RELEASE_KEY_PASSWORD": "KEY_PASSWORD",
+          }
+          # Java Properties reads Unicode escapes, including whitespace and backslashes.
+          def escape(value):
+              units = value.encode("utf-16-be").hex()
+              return "".join("\\u" + units[i:i + 4] for i in range(0, len(units), 4))
 
-      # The following steps are not needed if www is committed
-      - name: Install npm dependencies
-        run: |
-          cd mobile
-          npm ci
+          Path("signing.properties").write_text(
+              "".join(f"{key}={escape(os.environ[env])}\n" for key, env in keys.items()),
+              encoding="ascii",
+          )
+          PY
+          unset RELEASE_KEYSTORE KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD
 
-      # - name: Build web assets
-      #   run: |
-      #     cd mobile
-      #     npm run build
+          bash ./gradlew --no-daemon :app:assembleRelease
+          apk=app/build/outputs/apk/release/app-release.apk
+          tools="$ANDROID_HOME/build-tools/36.1.0"
+          signature=$("$tools/apksigner" verify --print-certs "$apk")
+          fingerprint=$(printf '%s\n' "$signature" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+          if [[ "$fingerprint" != 953f5cce7c645a7ae6b49fd748822fe03cb70376da01ec9420ae72de39be347e ]]; then
+            echo "::error::APK was not signed with the original SFL Browser release certificate."
+            exit 1
+          fi
+          badging=$("$tools/aapt2" dump badging "$apk")
+          package=$(printf '%s\n' "$badging" | sed -n "s/^package: name='\([^']*\)'.*/\1/p")
+          version=$(printf '%s\n' "$badging" | sed -n "s/^package: .*versionName='\([^']*\)'.*/\1/p")
+          if [[ "$package" != com.sfl.browser || ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::APK has an unexpected application ID or version name."
+            exit 1
+          fi
+          asset="app/build/outputs/apk/release/sfl-browser-v${version}.apk"
+          mv "$apk" "$asset"
+          printf 'version=%s\nasset=%s\n' "$version" "$asset" >> "$GITHUB_OUTPUT"
 
-      - name: Copy prebuilt web assets to mobile/www
-        run: |
-          rm -rf mobile/www
-          cp -r www mobile/www
-
-      - name: Sync Capacitor
-        run: |
-          cd mobile
-          npx cap sync android
-
-      - name: Build Release APK
-        run: |
-          cd mobile/android
-          ./gradlew assembleRelease
-
-
-
-      - name: Get version name from build.gradle
-        id: version
-        run: |
-          VERSION_NAME=$(grep versionName mobile/android/app/build.gradle | head -1 | sed 's/.*versionName[[:space:]]*"\([^"]*\)".*/\1/')
-          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
-
-
-
-      - name: Rename APK with version
-        run: |
-          mv mobile/android/app/build/outputs/apk/release/app-release.apk mobile/android/app/build/outputs/apk/release/sfl-browser-v${{ steps.version.outputs.version_name }}.apk
-
-      - name: Create versioned GitHub Release and Upload APK
+      - name: Publish versioned GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.version.outputs.version_name }}
-          name: SFL Browser v${{ steps.version.outputs.version_name }}
-          body: Automated release of SFL Browser version ${{ steps.version.outputs.version_name }} APK.
-          draft: false
-          prerelease: false
-          files: mobile/android/app/build/outputs/apk/release/sfl-browser-v${{ steps.version.outputs.version_name }}.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: v${{ steps.apk.outputs.version }}
+          name: SFL Browser v${{ steps.apk.outputs.version }}
+          body: Signed SFL Browser ${{ steps.apk.outputs.version }} APK.
+          files: ${{ steps.apk.outputs.asset }}
+          fail_on_unmatched_files: true
 
-      - name: Update 'latest' GitHub Release with newest APK
+      - name: Update latest GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
           name: SFL Browser (Latest)
           body: |
-            This is the latest release. For version history, see previous releases.
-            
-            Version: ${{ steps.version.outputs.version_name }}
-          draft: false
-          prerelease: false
-          files: mobile/android/app/build/outputs/apk/release/sfl-browser-v${{ steps.version.outputs.version_name }}.apk
-          overwrite_files: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            Version: ${{ steps.apk.outputs.version }}
+          files: ${{ steps.apk.outputs.asset }}
+          fail_on_unmatched_files: true
+          make_latest: true

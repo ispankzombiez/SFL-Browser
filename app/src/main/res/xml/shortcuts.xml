@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut android:shortcutId="overview" android:enabled="true"
+        android:icon="@mipmap/ic_launcher" android:shortcutShortLabel="@string/overview_title">
+        <intent android:action="com.sfl.browser.OPEN_OVERVIEW"
+            android:targetPackage="com.sfl.browser" android:targetClass="com.sfl.browser.ui.MainActivity" />
+    </shortcut>
+    <shortcut android:shortcutId="timeline" android:enabled="true"
+        android:icon="@mipmap/ic_launcher" android:shortcutShortLabel="@string/timeline_title">
+        <intent android:action="com.sfl.browser.OPEN_TIMELINE"
+            android:targetPackage="com.sfl.browser" android:targetClass="com.sfl.browser.ui.MainActivity" />
+    </shortcut>
+    <shortcut android:shortcutId="settings" android:enabled="true"
+        android:icon="@mipmap/ic_launcher" android:shortcutShortLabel="@string/settings_title">
+        <intent android:action="com.sfl.browser.OPEN_SETTINGS"
+            android:targetPackage="com.sfl.browser" android:targetClass="com.sfl.browser.ui.MainActivity" />
+    </shortcut>
+</shortcuts>

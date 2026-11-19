@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_tab_browser">Browser</string>
+    <string name="settings_tab_farm">Farm &amp; Sync</string>
+    <string name="settings_tab_notifications">Notifications</string>
+    <string name="settings_tab_about">About</string>
+    <string name="settings_section_about">About</string>
+    <string name="section_links">Links</string>
+    <string name="settings_about_dev">About the Dev</string>
+    <string name="settings_credits">Credits</string>
+    <string name="settings_tutorial">Tutorial</string>
+    <string name="settings_privacy">Privacy policy</string>
+    <string name="settings_github">View the source on GitHub</string>
+    <string name="settings_contact">Email the developer</string>
+    <string name="settings_contact_email" translatable="false">iSPANKapps@gmail.com</string>
+    <string name="settings_disclaimer_heading">Disclaimer</string>
+    <string name="settings_disclaimer_text">SFL Browser is an unofficial app and is not affiliated with, endorsed by, or connected to Sunflower Land or its developers. It is created and maintained by independent community members and fans of the game.\n\nThe source code is fully open-source and available for public review on GitHub. No private keys, wallet recovery phrases, or sensitive information are ever requested or stored by this app.\n\nPlease always exercise caution and follow best security practices when using any third-party software. Use at your own risk.</string>
+    <string name="settings_link_unavailable">No app is available to open this link.</string>
+
+    <string name="tut_intro">SFL Browser is an unofficial companion app for Sunflower Land. Play the game in the built-in browser and let the app watch your farm and notify you when things are ready.</string>
+    <string name="tut_setup_heading">Set up notifications</string>
+    <string name="tut_setup">1. Allow notifications when the app asks. Exact alarms and ignoring battery optimisation are optional. You can change them later in Settings.\n2. Choose “Go to settings” when prompted, or open Settings → Farm &amp; Sync anytime.\n3. Enter your Farm ID (shown in-game at the top of the options panel: Settings → 3 dots).\n4. Enter your API key (in-game: Settings → 3 dots → General → API Key). It stays encrypted on your device.\n5. Tap “Run a check now” to confirm everything works.</string>
+    <string name="tut_categories_heading">Choose what alerts you</string>
+    <string name="tut_categories">On the Notifications tab, choose which categories alert you. Feeding alerts are separate for chickens, cows, sheep, and pigs. Cooking buildings, the Crafting Box, and the Crop Machine can alert for each item or once when the queue is done. The Crop Machine can also alert when it runs out of oil with unfinished packs. Set an offset for completion alerts and a grouping window for same-named items.</string>
+    <string name="tut_delivery_heading">Reliable delivery</string>
+    <string name="tut_delivery">On the Notifications tab, grant the exact alarm permission and the battery exemption so alerts arrive on time. Battery saving mode skips exact alarms and delivers alerts on the next scheduled check instead.</string>
+    <string name="tut_browser_heading">Browser and tabs</string>
+    <string name="tut_browser">Full browser mode opens the game, with sfl.world and the SFL Wiki available as additional tabs on fresh installs. Manage home tabs on the Browser page in Settings and tap the stacked-tabs icon to switch between them. To reload the page, open the menu (☰) and choose Refresh.\n\nUnder Settings → Browser → Appearance, open Customize browser layout to move controls between top and bottom rows, resize them, or tuck them into Hidden. If you hide Settings as well, long-press the app icon to get back to it. Color theme previews the native app colors without changing websites. In Settings, swipe sideways to switch pages. You can hide the browser controls and Android navigation buttons independently.\n\nTurn on Notifications only on the Browser page to disable the built-in browser. The app icon then opens Settings, and tapping an alert opens Settings or an app you select. Long-press the app icon for Overview, Timeline, and Settings shortcuts.</string>
+    <string name="tut_screens_heading">Overview and Timeline</string>
+    <string name="tut_screens">From the menu (☰), Overview groups your farm by section and Timeline lists what finishes next, including the daily UTC reset. Available Telegram quests and Bud Boxes appear at the top until completed. Tap a building name to expand its queue, a grouped row’s arrow to see its timers, or a raffle start’s arrow to see all the prizes. The app reuses its saved timers when the farm hasn’t changed and recalculates when a time-based change affects them.</string>
+    <string name="tut_prices_heading">Price alerts</string>
+    <string name="tut_prices">On the Price Alerts tab, add alerts for collectibles, wearables, Buds, and Pets to be notified when an item lists at or below — or at or above — your target price. Batched price checks use a marketplace snapshot that updates about once a minute. Turn this off to look up live prices one item at a time.</string>
+    <string name="tut_help_heading">Need help?</string>
+    <string name="tut_help">For support, questions, or bug reports, visit the SFL Browser channel on the official Sunflower Land Discord, or the project’s GitHub page.</string>
+    <string name="tut_discord_button">Open the Discord support channel</string>
+
+    <string name="settings_dev_name">iSPANK</string>
+    <string name="settings_dev_bio">SFL Browser is a free community app built by iSPANK for playing Sunflower Land and receiving farm notifications. It was made independently of the official Sunflower Land team and is not affiliated with it.</string>
+    <string name="settings_dev_support">Support the developer</string>
+    <string name="settings_dev_farm">Visit iSPANK’s farm</string>
+    <string name="settings_dev_play_store">Leave a review on Google Play</string>
+    <string name="settings_dev_donation_heading">Donation address</string>
+    <string name="settings_dev_donation_address" translatable="false">0xa1B7786847410C677fadB526D476d787EA4DEafE</string>
+    <string name="settings_dev_donation_currencies">Preferred currencies: POL, USDC, Base ETH, or $Flower.</string>
+    <string name="settings_dev_copy_address">Copy donation address</string>
+    <string name="settings_dev_address_copied">Donation address copied.</string>
+
+    <string name="settings_credits_andrei">Andrei</string>
+    <string name="settings_credits_andrei_role">Created and runs SFL World and SFL Wiki.</string>
+    <string name="settings_credits_andrei_farm">Visit Andrei’s farm</string>
+    <string name="settings_credits_sfl_world">Open SFL World</string>
+    <string name="settings_credits_sfl_wiki">Open SFL Wiki</string>
+    <string name="settings_credits_kohirabbit">kohirabbit</string>
+    <string name="settings_credits_kohirabbit_role">Designed the app icon.</string>
+    <string name="settings_credits_kohirabbit_farm">Visit kohirabbit’s farm</string>
+    <string name="settings_credits_portfolio">View portfolio</string>
+    <string name="settings_credits_elias">Elias</string>
+    <string name="settings_credits_elias_role">Provided GitHub guidance and support.</string>
+    <string name="settings_credits_elias_farm">Visit Elias’s farm</string>
+    <string name="settings_credits_maschs">Maschs</string>
+    <string name="settings_credits_maschs_role">Helped with coding and the API.</string>
+    <string name="settings_credits_maschs_farm">Visit Maschs’s farm</string>
+    <string name="settings_credits_thanks">Thank you to everyone who contributed!</string>
+</resources>

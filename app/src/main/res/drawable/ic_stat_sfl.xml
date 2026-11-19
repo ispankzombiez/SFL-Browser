@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher flower reduced to an alpha mask for Android's status-bar tint. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M10,2H14V5H16V3H20V5H22V9H19V11H22V14H19V16H22V20H20V22H16V19H14V22H10V19H8V22H4V20H2V16H5V14H2V11H5V9H2V5H4V3H8V5H10Z M9,8H15V9H16V15H15V16H9V15H8V9H9Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M10,10H14V14H10Z" />
+</vector>

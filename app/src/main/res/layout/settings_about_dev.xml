@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<merge xmlns:android="http://schemas.android.com/apk/res/android">
+    <TextView
+        style="@style/SettingsHeading"
+        android:text="@string/settings_dev_name" />
+
+    <TextView
+        style="@style/SettingsLabel"
+        android:text="@string/settings_dev_bio" />
+
+    <TextView
+        style="@style/SettingsHeading"
+        android:text="@string/settings_dev_support" />
+
+    <Button
+        android:id="@+id/devFarm"
+        style="@style/SettingsLinkButton"
+        android:text="@string/settings_dev_farm" />
+
+    <Button
+        android:id="@+id/devPlayStore"
+        style="@style/SettingsLinkButton"
+        android:text="@string/settings_dev_play_store" />
+
+    <TextView
+        style="@style/SettingsHeading"
+        android:text="@string/settings_dev_donation_heading" />
+
+    <TextView
+        style="@style/SettingsLabel"
+        android:breakStrategy="simple"
+        android:fontFamily="monospace"
+        android:text="@string/settings_dev_donation_address"
+        android:textIsSelectable="true" />
+
+    <TextView
+        style="@style/SettingsHelp"
+        android:text="@string/settings_dev_donation_currencies" />
+
+    <Button
+        android:id="@+id/copyDonationAddress"
+        style="@style/SettingsLinkButton"
+        android:text="@string/settings_dev_copy_address" />
+</merge>

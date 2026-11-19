@@ -1,3 +1,0 @@
-﻿[error] android platform already exists.
-        To re-add this platform, first remove .\android, then run this command again.
-        WARNING: Your native project will be completely removed.

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tab_switcher_title">Switch home tab</string>
+    <string name="browser_main_tab">Home</string>
+</resources>

@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The whole app wears the sfl-overview.com chrome, which is Sunflower
+  Land's own: dark navy chrome around tan in-game window panels, all text
+  set in the game's pixel font (res/font/sfl_basic).
+-->
+<resources>
+    <style name="Theme.SflBrowser" parent="Theme.Material3.Dark.NoActionBar">
+        <!-- Chrome -->
+        <item name="android:windowBackground">@color/sfl_page</item>
+        <item name="android:statusBarColor">@color/sfl_page</item>
+        <item name="android:navigationBarColor">@color/sfl_page</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:textColorPrimary">@color/sfl_text_black</item>
+        <item name="android:textColorSecondary">@color/sfl_text_black</item>
+        <item name="android:textColorHint">@color/sfl_text_black</item>
+
+        <!-- Pixel font everywhere; screens may override per-view. -->
+        <item name="android:fontFamily">@font/sfl_basic</item>
+
+        <!-- Surfaces are the tan panels; ink is the dark brown outline. -->
+        <item name="colorPrimary">@color/sfl_accent</item>
+        <item name="colorOnPrimary">@color/sfl_on_accent</item>
+        <item name="colorPrimaryContainer">@color/sfl_ground</item>
+        <item name="colorOnPrimaryContainer">@color/sfl_text_black</item>
+        <item name="colorSecondary">@color/sfl_chip_ready</item>
+        <item name="colorOnSecondary">@color/sfl_on_chip_ready</item>
+        <item name="colorSurface">@color/sfl_panel</item>
+        <item name="colorOnSurface">@color/sfl_text_black</item>
+        <item name="colorSurfaceVariant">@color/sfl_ground</item>
+        <item name="colorOnSurfaceVariant">@color/sfl_text_black</item>
+        <item name="android:colorBackground">@color/sfl_ground</item>
+        <item name="colorOnBackground">@color/sfl_text_black</item>
+        <item name="colorOutline">@color/sfl_ink</item>
+        <item name="colorError">@color/sfl_chip_danger</item>
+        <item name="colorOnError">@color/sfl_on_chip_danger</item>
+    </style>
+
+    <style name="ThemeOverlay.SflBrowser.PriceAlert" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="colorSurface">@color/sfl_page</item>
+        <item name="colorSurfaceContainerHigh">@color/sfl_page</item>
+        <item name="colorOnSurface">@color/sfl_text_white</item>
+        <item name="colorOnSurfaceVariant">@color/sfl_text_white</item>
+        <item name="android:textColorPrimary">@color/sfl_text_white</item>
+        <item name="android:textColorSecondary">@color/sfl_text_white</item>
+        <item name="android:textColorHint">@color/sfl_text_white</item>
+    </style>
+
+    <style name="SettingsPage">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:orientation">vertical</item>
+    </style>
+
+    <style name="SettingsLinkButton" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textColor">@color/sfl_text_black</item>
+    </style>
+
+    <!-- Section label above a settings group: tracked-out caps like the
+         site's SectionHeader. -->
+    <style name="SettingsHeading">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">24dp</item>
+        <item name="android:layout_marginBottom">4dp</item>
+        <item name="android:textAppearance">?attr/textAppearanceTitleMedium</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/sfl_text_black</item>
+        <item name="android:shadowColor">@color/sfl_ink_shadow</item>
+        <item name="android:shadowDx">0</item>
+        <item name="android:shadowDy">1</item>
+    </style>
+
+    <style name="SettingsLabel">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">10dp</item>
+        <item name="android:textAppearance">?attr/textAppearanceBodyMedium</item>
+        <item name="android:textColor">@color/sfl_text_black</item>
+    </style>
+
+    <style name="SettingsInput">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:textColor">@color/sfl_on_field</item>
+        <item name="android:textColorHint">@color/sfl_on_field</item>
+        <item name="android:background">@drawable/bg_field</item>
+        <item name="android:padding">10dp</item>
+    </style>
+
+    <style name="SettingsHelp">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">4dp</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:textColor">@color/sfl_text_black</item>
+    </style>
+</resources>

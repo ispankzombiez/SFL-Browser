@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="timer_yield">Yield: %1$s %2$s</string>
+    <string name="timer_group_with_yield">%1$s · %2$s</string>
+    <string name="cat_crop_machine">Crop Machine</string>
+    <string name="cat_composters">Composters</string>
+    <string name="cat_quests">Quests</string>
+    <string name="cat_bud_box">Bud Box</string>
+    <string name="cat_aging_shed">Aging Shed</string>
+    <string name="cat_petting">Petting</string>
+    <string name="cat_animals">Animals</string>
+    <string name="cat_beehives">Beehives</string>
+    <string name="cat_salt">Salt</string>
+    <string name="timeline_auction_starts">Auction starts: %1$s</string>
+    <string name="timeline_auction_ends">Auction ends: %1$s</string>
+    <string name="timeline_raffle_starts">Raffle starts: %1$s</string>
+    <string name="timeline_raffle_ends">Raffle ends: %1$s</string>
+    <string name="timeline_auction_name">Auction item</string>
+    <string name="timeline_raffle_name">Prizes</string>
+    <string name="timeline_prize_place">#%1$d: %2$s</string>
+    <string name="timeline_prize_reward">%1$s × %2$s</string>
+    <string name="timeline_prizes_unavailable">%1$s\nRefresh Timeline to load the full prize list.</string>
+    <string name="timeline_daily_reset">Daily reset (UTC)</string>
+    <string name="timer_not_done">NOT DONE</string>
+    <string name="timeline_event_started">Started</string>
+    <string name="timeline_event_ended">Ended</string>
+    <string name="timeline_events_not_refreshed">Couldn’t refresh all auctions and raffles. Showing the last available results.</string>
+</resources>

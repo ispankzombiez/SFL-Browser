@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Palette sampled from sfl-overview.com, which dresses its UI in Sunflower
+  Land's own art: a dark navy chrome, a warm "dirt ground" canvas and tan
+  in-game window panels, all outlined in the game's near-black brown.
+
+  Chip colours mirror the game's Labels (Ready / soon / later / neutral).
+-->
+<resources>
+    <!-- Dark navy chrome: status bar, window background, page edges. -->
+    <color name="sfl_page">#181425</color>
+    <!-- The ground the panels sit on (the site's OuterPanel fill). -->
+    <color name="sfl_ground">#C28569</color>
+    <!-- Panel body (the site's InnerPanel fill). -->
+    <color name="sfl_panel">#E4A672</color>
+    <!-- Slightly lighter row/inner grouping fill. -->
+    <color name="sfl_panel_soft">#E9C39C</color>
+    <!-- Ink: body text and outlines drawn on the tan panels. -->
+    <color name="sfl_ink">#3E2731</color>
+    <color name="sfl_text_black">#000000</color>
+    <color name="sfl_text_white">#FFFFFF</color>
+    <!-- Panel heading shadow. -->
+    <color name="sfl_ink_shadow">#714431</color>
+    <!-- Light tint on the dark chrome. -->
+    <color name="sfl_cream">#FFF0D4</color>
+    <color name="sfl_field">#FFF0D4</color>
+    <color name="sfl_on_field">#000000</color>
+    <color name="sfl_accent">#F09100</color>
+    <color name="sfl_on_accent">#000000</color>
+
+    <!-- Label / chip fills. -->
+    <color name="sfl_chip_default">#C0CBDC</color>
+    <color name="sfl_chip_ready">#3E8948</color>
+    <color name="sfl_chip_soon">#F09100</color>
+    <color name="sfl_chip_later">#1E6DD5</color>
+    <color name="sfl_chip_danger">#E43B44</color>
+
+    <!-- Text on top of each chip fill. -->
+    <color name="sfl_on_chip_default">#000000</color>
+    <color name="sfl_on_chip_ready">#FFFFFF</color>
+    <color name="sfl_on_chip_soon">#000000</color>
+    <color name="sfl_on_chip_later">#FFFFFF</color>
+    <color name="sfl_on_chip_danger">#FFFFFF</color>
+
+    <!-- Legacy palette (pre-theme). Kept so existing references resolve. -->
+    <color name="sfl_green">#2E7D32</color>
+    <color name="sfl_green_dark">#1B5E20</color>
+    <color name="sfl_yellow">#F5C518</color>
+    <color name="sfl_brown">#6D4C1F</color>
+    <color name="ic_launcher_background">#FFFFFF</color>
+    <color name="status_bar">#123D18</color>
+</resources>

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<merge xmlns:android="http://schemas.android.com/apk/res/android">
+    <TextView
+        style="@style/SettingsHeading"
+        android:text="@string/settings_credits_andrei" />
+
+    <TextView
+        style="@style/SettingsLabel"
+        android:text="@string/settings_credits_andrei_role" />
+
+    <Button
+        android:id="@+id/andreiFarm"
+        style="@style/SettingsLinkButton"
+        android:text="@string/settings_credits_andrei_farm" />
+
+    <Button
+        android:id="@+id/creditsSflWorld"
+        style="@style/SettingsLinkButton"
+        android:text="@string/settings_credits_sfl_world" />
+
+    <Button
+        android:id="@+id/creditsSflWiki"
+        style="@style/SettingsLinkButton"
+        android:text="@string/settings_credits_sfl_wiki" />
+
+    <TextView
+        style="@style/SettingsHeading"
+        android:text="@string/settings_credits_kohirabbit" />
+
+    <TextView
+        style="@style/SettingsLabel"
+        android:text="@string/settings_credits_kohirabbit_role" />
+
+    <Button
+        android:id="@+id/kohirabbitFarm"
+        style="@style/SettingsLinkButton"
+        android:text="@string/settings_credits_kohirabbit_farm" />
+
+    <Button
+        android:id="@+id/kohirabbitPortfolio"
+        style="@style/SettingsLinkButton"
+        android:text="@string/settings_credits_portfolio" />
+
+    <TextView
+        style="@style/SettingsHeading"
+        android:text="@string/settings_credits_elias" />
+
+    <TextView
+        style="@style/SettingsLabel"
+        android:text="@string/settings_credits_elias_role" />
+
+    <Button
+        android:id="@+id/eliasFarm"
+        style="@style/SettingsLinkButton"
+        android:text="@string/settings_credits_elias_farm" />
+
+    <TextView
+        style="@style/SettingsHeading"
+        android:text="@string/settings_credits_maschs" />
+
+    <TextView
+        style="@style/SettingsLabel"
+        android:text="@string/settings_credits_maschs_role" />
+
+    <Button
+        android:id="@+id/maschsFarm"
+        style="@style/SettingsLinkButton"
+        android:text="@string/settings_credits_maschs_farm" />
+
+    <TextView
+        style="@style/SettingsLabel"
+        android:text="@string/settings_credits_thanks" />
+</merge>

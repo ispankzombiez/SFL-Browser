@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="time_units">
+        <item>seconds</item>
+        <item>minutes</item>
+        <item>hours</item>
+    </string-array>
+
+    <string-array name="cooking_modes">
+        <item>Each food item separately</item>
+        <item>Once, when everything in the building is done</item>
+    </string-array>
+
+    <string-array name="crafting_box_modes">
+        <item>Each item separately</item>
+        <item>Once, when all items are done</item>
+    </string-array>
+
+    <string-array name="price_collections">
+        <item>collectibles</item>
+        <item>wearables</item>
+        <item>buds</item>
+        <item>pets</item>
+    </string-array>
+
+    <string-array name="price_directions">
+        <item>at or below</item>
+        <item>at or above</item>
+    </string-array>
+</resources>

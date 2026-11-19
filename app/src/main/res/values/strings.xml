@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SFL-Browser</string>
+    <string name="settings_title">Settings</string>
+
+    <!-- Browser chrome -->
+    <string name="cd_back">Back</string>
+    <string name="cd_forward">Forward</string>
+    <string name="menu_refresh">Refresh</string>
+    <string name="cd_home">Home</string>
+    <string name="cd_menu">More options</string>
+    <string name="url_hint">Address</string>
+    <string name="menu_settings">Settings</string>
+
+    <!-- Overview / Timeline screens -->
+    <string name="menu_overview">Overview</string>
+    <string name="menu_timeline">Timeline</string>
+    <string name="overview_title">Overview</string>
+    <string name="overview_subtitle">Everything on your farm, grouped by type</string>
+    <string name="timeline_title">Timeline</string>
+    <string name="timeline_subtitle">Daily tasks first, then farm timers and events in time order</string>
+    <string name="cd_refresh">Refresh</string>
+    <string name="refreshed_ago">Updated %1$s</string>
+    <string name="just_now">just now</string>
+    <string name="refreshing">Updating…</string>
+    <string name="err_busy">The API allows one request every few seconds — try again in a moment.</string>
+    <string name="err_no_data">Nothing to show yet.</string>
+    <string name="empty_overview">No timers running on this farm right now.</string>
+    <string name="empty_timeline">Nothing is finishing soon.</string>
+    <string name="timer_group_count">%1$dx</string>
+    <string name="cd_expand_group">Show items in group</string>
+    <string name="cd_collapse_group">Hide items in group</string>
+    <string name="cat_crops">Crops</string>
+    <string name="cat_fruit">Fruit Patches</string>
+    <string name="cat_greenhouse">Greenhouse</string>
+    <string name="cat_flowers">Flowers</string>
+    <string name="cat_resources">Resources</string>
+    <string name="cat_lava">Lava Pits</string>
+    <string name="cat_traps">Crab Traps</string>
+    <string name="cat_cave">Cave</string>
+    <string name="cat_crafting">Crafting Box</string>
+    <string name="cat_cooking">Cooking</string>
+    <string name="cat_collectibles">Collectibles</string>
+    <string name="cat_expansion">Expansion</string>
+    <string name="cat_other">Other</string>
+
+    <!-- Settings -->
+    <string name="section_api">Sunflower Land Community API</string>
+    <string name="label_api_key">API key</string>
+    <string name="hint_api_key">sfl.…</string>
+    <string name="help_api_key">Issued at sunflower-land.com/community-docs for a VIP farm of level 50 or higher. Stored encrypted on this device only — it is never compiled into the APK.</string>
+    <string name="label_farm_id">Farm / account id</string>
+    <string name="hint_farm_id">1128976301583508</string>
+
+    <string name="section_browser">Browser</string>
+    <string name="label_home_url">Home page</string>
+    <string name="hint_home_url">https://sunflower-land.com/play/?ref=iSPANK</string>
+
+    <string name="category_animal_love">Animal love requests</string>
+    <string name="notif_animal_love">%1$s wants love</string>
+    <string name="notif_animal_love_group">%1$d × %2$s want love</string>
+
+    <string name="section_polling">API polling</string>
+    <string name="label_poll_interval">Poll the API every</string>
+    <string name="help_poll_interval">WorkManager runs this check even when the app is closed. Intervals under 15 minutes use a chain of delayed one-shot workers, so Android may batch them a little — Doze can add a few more minutes while the screen is off.</string>
+    <string name="label_wifi_only">Only poll on unmetered (Wi-Fi) networks</string>
+    <string name="btn_test_now">Run a check now</string>
+
+    <string name="section_delivery">Delivery</string>
+    <string name="label_battery_saving">Battery saving (batch notifications)</string>
+    <string name="help_battery_saving">Off by default: due timer groups use alarms. On: due timer groups are delivered at the next poll, which saves battery but can delay notifications.</string>
+    <string name="label_offset">Time offset</string>
+    <string name="help_offset">Shift every scheduled notification by this much. Negative fires earlier, positive fires later. Example: 5 minutes earlier warns you before the crop is actually ready.</string>
+    <string name="offset_negative">earlier</string>
+    <string name="offset_positive">later</string>
+    <string name="offset_none">exactly on time</string>
+    <string name="label_exact_alarm">Exact alarm access</string>
+    <string name="exact_alarm_granted">Granted</string>
+    <string name="exact_alarm_missing">Not granted — notifications will fire late</string>
+    <string name="btn_grant_exact_alarm">Allow exact alarms</string>
+    <string name="btn_manage_exact_alarm">Manage exact alarms</string>
+    <string name="help_exact_alarm">Needed so a notification can fire at the exact second a crop is ready. Without it Android delivers it whenever it can.</string>
+    <string name="label_ignore_battery">Ignore battery optimisation</string>
+    <string name="help_ignore_battery">Some devices stop background work unless the app is exempt. Tap to open the system prompt.</string>
+
+    <string name="section_grouping">Grouping</string>
+    <string name="label_group_window">Merge same-named items finishing within</string>
+    <string name="help_group_window">Timers with the same name that finish within this window share one notification. It uses the last ready time plus your notification offset and shows the total yield when known.</string>
+
+    <string name="section_triggers">What to notify about</string>
+    <string name="category_crops">Crops</string>
+    <string name="category_fruit">Fruit patches</string>
+    <string name="category_trees">Trees / wood</string>
+    <string name="category_resources">Resources / mines</string>
+    <string name="category_oil">Oil reserves</string>
+    <string name="category_buildings">Buildings</string>
+    <string name="category_crafting_box">Crafting Box</string>
+    <string name="category_greenhouse">Greenhouse</string>
+    <string name="category_flowers">Flowers</string>
+    <string name="category_crab_traps">Crab traps</string>
+    <string name="category_lava_pits">Lava pits</string>
+    <string name="category_expansion">Land expansion</string>
+    <string name="category_collectibles">Collectibles</string>
+    <string name="category_cave">Cave</string>
+    <string name="label_cooking_mode">Cooking buildings</string>
+    <string name="help_cooking_mode">Fire Pit, Kitchen, Bakery, Deli, Smoothie Shack and friends can hold several foods at once. Choose whether each food gets its own notification, or the building notifies once when its last food is done.</string>
+    <string name="help_crafting_box_mode">Choose separate item notifications or one Crafting Box notification timed from the last item to finish. Your notification offset still applies.</string>
+    <string name="label_enable_events">Raffles &amp; auction drops</string>
+    <string name="label_enable_sales">Marketplace listings of mine that sold</string>
+    <string name="label_enable_prices">Price alerts on collectibles</string>
+    <string name="label_lead_time">Warn this long before a raffle or auction</string>
+
+    <string name="section_price_alerts">Price alerts</string>
+    <string name="btn_add_price_alert">Add price alert</string>
+    <string name="price_alert_empty">No price alerts yet.</string>
+    <string name="price_alert_row">%1$s · floor %2$s %3$s FLOWER</string>
+    <string name="cd_delete">Delete</string>
+
+    <string name="alert_dialog_title">Price alert</string>
+    <string name="label_item_name">Item name</string>
+    <string name="label_collection">Collection</string>
+    <string name="err_select_item">Choose an item from the list.</string>
+    <string name="label_direction">Trigger when the floor is</string>
+    <string name="label_below">at or below</string>
+    <string name="label_above">at or above</string>
+    <string name="label_threshold">Threshold (FLOWER)</string>
+    <string name="collection_collectibles">collectibles</string>
+    <string name="collection_wearables">wearables</string>
+    <string name="collection_buds">buds</string>
+    <string name="collection_pets">pets</string>
+
+    <string name="err_api_key_required">Enter your API key first — background checks need it.</string>
+    <string name="err_number">Enter a whole number.</string>
+
+    <!-- Notifications -->
+    <string name="channel_timers">Farm timers</string>
+    <string name="channel_events">Raffles &amp; auctions</string>
+    <string name="channel_sales">Marketplace sales</string>
+    <string name="channel_prices">Price alerts</string>
+    <string name="channel_errors">Check problems</string>
+    <string name="notif_open_game">Open SFL-Browser</string>
+
+    <string name="notif_timer_title">%1$s ready</string>
+    <string name="notif_timer_title_count">%2$d × %1$s ready</string>
+    <string name="notif_item_amount">%1$s %2$s</string>
+    <string name="notif_stones_ready">%1$d stones ready</string>
+    <string name="hide_browser_controls">Hide browser controls</string>
+    <string name="hide_android_navigation">Hide Android navigation buttons</string>
+    <string name="hide_browser_controls_help">To turn this off, long-press the app icon on your Android home screen and choose Settings.</string>
+    <string name="btn_edit_home_tab">Edit</string>
+    <string name="edit_home_tab_title">Edit home tab</string>
+    <string name="desc_edit_home_tab">Edit %1$s</string>
+    <string name="save_home_tab">Save</string>
+    <string name="tab_page">%1$d / %2$d</string>
+    <string name="tab_previous_page">Previous page</string>
+    <string name="tab_next_page">Next page</string>
+    <string name="notif_timer_ready">Ready now</string>
+    <string name="notif_timer_group_text">Finishing %1$s – %2$s</string>
+
+    <string name="notif_raffle_title">Raffle starting soon</string>
+    <string name="notif_auction_title">Auction starting soon</string>
+    <string name="notif_auction_text">%1$s · %2$s SFL</string>
+    <string name="notif_check_game">Open the game for details</string>
+
+    <string name="notif_sale_title">Sold: %1$d × %2$s</string>
+    <string name="notif_sale_item">Item #%1$d</string>
+    <string name="notif_sale_text">%1$s SFL</string>
+    <string name="notif_sale_text_from">%1$s SFL · bought by %2$s</string>
+
+    <string name="notif_price_title">Price alert: %1$s</string>
+    <string name="notif_price_text">Floor is %1$s FLOWER (trigger %2$s %3$s)</string>
+
+    <string name="err_api_key_required_title">API key needed</string>
+    <string name="err_farm_id_title">Farm id needed</string>
+    <string name="err_farm_id">Set your farm id in Settings so background checks know which farm to watch.</string>
+    <string name="err_api_rejected_title">The API rejected a check</string>
+    <string name="err_api_rejected">Request failed (%1$s). Your API key may have expired or been revoked.</string>
+    <string name="err_api_failed_title">A background check failed</string>
+    <string name="err_api_failed">Could not complete a check (%1$s). It will be retried on the next poll.</string>
+
+    <!-- Dialogs -->
+    <string name="wallet_no_app">No installed wallet app can open this WalletConnect request.</string>
+    <string name="wallet_rejected">The wallet rejected the connection.</string>
+    <string name="wallet_init_failed">The wallet SDK could not start — check the Project id in Settings.</string>
+    <string name="check_started">Running a check now</string>
+</resources>
