@@ -37,6 +37,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.PopupMenu
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.sfl.browser.diagnostics.CrashReporting
 import com.sfl.browser.R
 import com.sfl.browser.data.HomeTabs
 import com.sfl.browser.data.HomeTab
@@ -91,6 +92,7 @@ class MainActivity : PaletteActivity() {
     private var renderedWidth = 0
     private var browserVisible = false
     private var pendingLaunch: Intent? = null
+    private var pendingFarmSync = false
     private var onboardingDialog: AlertDialog? = null
     private var waitingForNotificationGrant = false
     private var resumedForLaunch = false
@@ -120,6 +122,7 @@ class MainActivity : PaletteActivity() {
             if (right - left != oldRight - oldLeft) renderChrome()
         }
         pendingLaunch = intent.takeIf { savedInstanceState == null || savedInstanceState.getBoolean("pendingLaunch") }
+        pendingFarmSync = savedInstanceState?.getBoolean("pendingFarmSync") ?: false
         waitingForNotificationGrant = savedInstanceState?.getBoolean("waitingForNotificationGrant") ?: false
         savedInstanceState?.getBundle("webTabs")?.let { states ->
             states.keySet().forEach { id -> states.getBundle(id)?.let { savedTabs[id] = it } }
@@ -163,7 +166,7 @@ class MainActivity : PaletteActivity() {
         super.onPause()
     }
 
-    private fun continueLaunch(openFarmSync: Boolean = false) {
+    private fun continueLaunch() {
         if (isFinishing || isDestroyed || !resumedForLaunch) return
         if (waitingForNotificationGrant || onboardingDialog != null) return
         if (!Prefs.disclaimerAnswered(this)) {
@@ -177,9 +180,21 @@ class MainActivity : PaletteActivity() {
             return
         }
         if (continueNotificationOnboarding()) return
+        if (CrashReporting.available && Prefs.crashReportingChoice(this) == null) {
+            showOnboardingDialog(
+                R.string.crash_reporting_title, R.string.crash_reporting_message,
+                R.string.crash_reporting_decline, R.string.crash_reporting_allow,
+            ) { allowed ->
+                CrashReporting.saveChoice(this, allowed)
+                continueLaunch()
+            }
+            return
+        }
 
         val launch = pendingLaunch
         pendingLaunch = null
+        val openFarmSync = pendingFarmSync
+        pendingFarmSync = false
         val shortcut = if (openFarmSync) SettingsActivity.farmSyncIntent(this) else when (launch?.action) {
             OPEN_OVERVIEW -> Intent(this, OverviewActivity::class.java)
             OPEN_TIMELINE -> Intent(this, TimelineActivity::class.java)
@@ -257,7 +272,8 @@ class MainActivity : PaletteActivity() {
                     R.string.notification_setup_ignore, R.string.notification_setup_settings,
                 ) { choseRight ->
                     advance(NotificationOnboardingStep.DONE)
-                    continueLaunch(openFarmSync = choseRight)
+                    pendingFarmSync = choseRight
+                    continueLaunch()
                 }
                 return true
             }
@@ -358,6 +374,7 @@ class MainActivity : PaletteActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putBoolean("pendingLaunch", pendingLaunch != null)
+        outState.putBoolean("pendingFarmSync", pendingFarmSync)
         outState.putBoolean("waitingForNotificationGrant", waitingForNotificationGrant)
         outState.putString("activeWebTab", activeTab)
         outState.putBundle("webTabs", Bundle().apply {

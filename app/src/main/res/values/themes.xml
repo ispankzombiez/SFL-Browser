@@ -4,14 +4,14 @@
   Land's own: dark navy chrome around tan in-game window panels, all text
   set in the game's pixel font (res/font/sfl_basic).
 -->
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <style name="Theme.SflBrowser" parent="Theme.Material3.Dark.NoActionBar">
         <!-- Chrome -->
         <item name="android:windowBackground">@color/sfl_page</item>
         <item name="android:statusBarColor">@color/sfl_page</item>
         <item name="android:navigationBarColor">@color/sfl_page</item>
         <item name="android:windowLightStatusBar">false</item>
-        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="27">false</item>
         <item name="android:textColorPrimary">@color/sfl_text_black</item>
         <item name="android:textColorSecondary">@color/sfl_text_black</item>
         <item name="android:textColorHint">@color/sfl_text_black</item>

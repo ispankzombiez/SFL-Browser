@@ -37,6 +37,7 @@ import androidx.lifecycle.LiveData
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.google.android.material.appbar.MaterialToolbar
+import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.tabs.TabLayout
 import com.sfl.browser.R
 import com.sfl.browser.data.HomeTabs
@@ -46,6 +47,7 @@ import com.sfl.browser.data.Prefs
 import com.sfl.browser.data.PriceAlert
 import com.sfl.browser.data.SecureStore
 import com.sfl.browser.data.TimerCategory
+import com.sfl.browser.diagnostics.CrashReporting
 import com.sfl.browser.notify.PollFeedback
 import com.sfl.browser.notify.PollScheduler
 import com.sfl.browser.notify.TimerAlarm
@@ -162,6 +164,15 @@ class SettingsActivity : PaletteActivity() {
         ignoreBattery.setOnClickListener { requestBatteryExemption() }
         bindImmediateListeners()
         bindSettingsTabs(savedInstanceState?.getInt("settingsTab") ?: if (intent.action == OPEN_FARM_SYNC) FARM_SYNC_TAB else 0)
+        if (CrashReporting.available) {
+            findViewById<View>(R.id.crashReportingControls).visibility = View.VISIBLE
+            findViewById<MaterialSwitch>(R.id.shareCrashReports).apply {
+                isChecked = Prefs.crashReportingChoice(this@SettingsActivity) == true
+                setOnCheckedChangeListener { _, checked ->
+                    CrashReporting.saveChoice(this@SettingsActivity, checked)
+                }
+            }
+        }
         findViewById<Button>(R.id.btnAboutDev).setOnClickListener {
             startActivity(SettingsInfoActivity.intent(this, SettingsInfoActivity.PAGE_ABOUT_DEV))
         }
@@ -943,7 +954,9 @@ class SettingsActivity : PaletteActivity() {
             setTextColor(white)
             setHintTextColor(white)
             setDropDownBackgroundDrawable(popupBackground)
-            importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO
+            }
         }
         val thresholdInput = textInput(
             InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL,
@@ -1042,7 +1055,9 @@ class SettingsActivity : PaletteActivity() {
             hint = getString(labelRes)
             setTextColor(getColor(R.color.sfl_text_black))
             setHintTextColor(getColor(R.color.sfl_text_black))
-            importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO
+            }
         }
 
     private fun spinner(arrayRes: Int): Spinner =

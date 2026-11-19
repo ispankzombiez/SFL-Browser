@@ -43,6 +43,7 @@ object Notifier {
     // --------------------------------------------------------------- channels
 
     fun ensureChannels(context: Context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         manager.createNotificationChannel(
             channel(CH_TIMERS, context.getString(R.string.channel_timers), NotificationManager.IMPORTANCE_HIGH)
@@ -61,6 +62,7 @@ object Notifier {
         )
     }
 
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.O)
     private fun channel(id: String, name: String, importance: Int): NotificationChannel =
         NotificationChannel(id, name, importance).apply {
             description = name
@@ -110,7 +112,7 @@ object Notifier {
             )
         }
         val id = idFor("timer:${head.key}:${head.readyAt}")
-        val builder = base(context, CH_TIMERS, id)
+        val builder = base(context, CH_TIMERS)
             .setContentTitle(title)
             .setContentText(text)
             .setStyle(Notification.BigTextStyle().bigText(text))
@@ -155,7 +157,7 @@ object Notifier {
         post(
             context,
             nid,
-            base(context, CH_EVENTS, nid)
+            base(context, CH_EVENTS)
                 .setContentTitle(title)
                 .setContentText(text)
                 .setStyle(Notification.BigTextStyle().bigText(text))
@@ -170,7 +172,7 @@ object Notifier {
         post(
             context,
             nid,
-            base(context, CH_SALES, nid)
+            base(context, CH_SALES)
                 .setContentTitle(title)
                 .setContentText(text)
                 .setStyle(Notification.BigTextStyle().bigText(text))
@@ -185,7 +187,7 @@ object Notifier {
         post(
             context,
             nid,
-            base(context, CH_PRICES, nid)
+            base(context, CH_PRICES)
                 .setContentTitle(title)
                 .setContentText(text)
                 .setStyle(Notification.BigTextStyle().bigText(text))
@@ -200,7 +202,7 @@ object Notifier {
         post(
             context,
             nid,
-            base(context, CH_SYSTEM, nid)
+            base(context, CH_SYSTEM)
                 .setContentTitle(title)
                 .setContentText(text)
                 .setStyle(Notification.BigTextStyle().bigText(text))
@@ -214,13 +216,21 @@ object Notifier {
 
     // --------------------------------------------------------------- plumbing
 
-    private fun base(context: Context, channelId: String, id: Int): Notification.Builder =
-        Notification.Builder(context, channelId)
-            .setSmallIcon(R.drawable.ic_stat_sfl)
+    @Suppress("DEPRECATION")
+    private fun base(context: Context, channelId: String): Notification.Builder {
+        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Notification.Builder(context, channelId)
+        } else {
+            Notification.Builder(context)
+                .setPriority(if (channelId == CH_SYSTEM) Notification.PRIORITY_DEFAULT else Notification.PRIORITY_HIGH)
+                .setDefaults(Notification.DEFAULT_SOUND or Notification.DEFAULT_VIBRATE)
+        }
+        return builder.setSmallIcon(R.drawable.ic_stat_sfl)
             .setCategory(Notification.CATEGORY_EVENT)
             .setGroup(GROUP_SFL)
             .setContentIntent(openApp(context))
             .setWhen(System.currentTimeMillis())
+    }
 
     private fun openApp(context: Context): PendingIntent {
         val intent = Intent(context, MainActivity::class.java).apply {

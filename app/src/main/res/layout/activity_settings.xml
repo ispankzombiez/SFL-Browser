@@ -247,6 +247,30 @@
             android:accessibilityLiveRegion="polite"
             android:visibility="gone" />
 
+        <LinearLayout
+            android:id="@+id/crashReportingControls"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                style="@style/SettingsHeading"
+                android:text="@string/crash_reporting_title" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/shareCrashReports"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:saveEnabled="false"
+                android:text="@string/crash_reporting_switch"
+                android:textColor="@color/sfl_text_black" />
+
+            <TextView
+                style="@style/SettingsHelp"
+                android:text="@string/crash_reporting_help" />
+        </LinearLayout>
+
         </LinearLayout>
 
         <LinearLayout

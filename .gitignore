@@ -13,6 +13,9 @@ signing.properties
 *.jks
 *.keystore
 
+# Local Firebase project configuration.
+/app/google-services.json
+
 # App-internal state produced by the build.
 /app/build/
 /.kotlin/

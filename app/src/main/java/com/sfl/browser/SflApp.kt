@@ -2,6 +2,7 @@ package com.sfl.browser
 
 import android.app.Application
 import com.sfl.browser.data.HomeTabs
+import com.sfl.browser.diagnostics.CrashReporting
 import com.sfl.browser.notify.Notifier
 
 /**
@@ -15,6 +16,7 @@ import com.sfl.browser.notify.Notifier
 class SflApp : Application() {
     override fun onCreate() {
         super.onCreate()
+        CrashReporting.start(this)
         HomeTabs.initialize(this)
         Notifier.ensureChannels(this)
         if (BuildConfig.DEBUG) DebugSeed.ensure(this)

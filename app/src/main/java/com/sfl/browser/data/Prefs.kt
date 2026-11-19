@@ -99,6 +99,7 @@ object Prefs {
     private const val K_DISCLAIMER_ANSWERED = "disclaimerAnswered"
     private const val K_NOTIFICATION_ONBOARDING_STEP = "notificationOnboardingStep"
     private const val K_NOTIFICATION_APP = "notificationApp"
+    private const val K_CRASH_REPORTING_CHOICE = "crashReportingChoice"
 
     fun disclaimerAnswered(context: Context): Boolean = sp(context).getBoolean(K_DISCLAIMER_ANSWERED, false)
 
@@ -107,6 +108,14 @@ object Prefs {
 
     fun setNotificationOnboardingStep(context: Context, step: String) {
         sp(context).edit().putString(K_NOTIFICATION_ONBOARDING_STEP, step).apply()
+    }
+
+    fun crashReportingChoice(context: Context): Boolean? = sp(context).let {
+        if (it.contains(K_CRASH_REPORTING_CHOICE)) it.getBoolean(K_CRASH_REPORTING_CHOICE, false) else null
+    }
+
+    fun setCrashReportingChoice(context: Context, enabled: Boolean) {
+        sp(context).edit().putBoolean(K_CRASH_REPORTING_CHOICE, enabled).apply()
     }
 
     fun recordDisclaimerChoice(context: Context, notificationsOnly: Boolean) {

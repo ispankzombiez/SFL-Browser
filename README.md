@@ -2,6 +2,8 @@
 
 SFL Browser is an unofficial Android browser and notification companion for [Sunflower Land](https://sunflower-land.com/). It is a native Kotlin app and does not require Capacitor or Node.js.
 
+The app supports Android 7.0 (API 24) and later. On Android 7, notifications use the app-wide Android settings rather than the per-category system channels available on Android 8 and later.
+
 [Project website and privacy policy](https://ispankzombiez.github.io/SFL-Browser/) · [Google Play](https://play.google.com/store/apps/details?id=com.sfl.browser) · [GitHub Releases](https://github.com/ispankzombiez/SFL-Browser/releases) · [Support](https://discord.com/channels/880987707214544966/1314031342182338651)
 
 ## Using the app
@@ -27,13 +29,23 @@ If needed, set `ANDROID_HOME` or let Android Studio create a local `local.proper
 
 For a signed release, copy [`signing.properties.template`](./signing.properties.template) to `signing.properties` at the repository root and supply the appropriate keystore path, alias, and passwords. Use an absolute keystore path, or a path relative to `app/`. Never commit signing credentials, the keystore, a farm API key, or private farm data.
 
+### Optional crash reporting
+
+With `app/google-services.json` for `com.sfl.browser` (ignored by Git), debug and release builds include Firebase Crashlytics. Source builds without the configuration do not include Crashlytics or show its controls. The app asks once and saves either answer; users can change it under **Settings → Farm & Sync → Share crash reports**. Firebase starts only after the user has opted in and restarted the app. Turning reporting off takes full effect on restart. SFL Browser does not add Google Analytics, custom logs, user IDs, or handled-error reporting.
+
+Before rollout, publish the privacy policy and update **Play Console → App content → Data safety**. Review the [Firebase data disclosure guide](https://firebase.google.com/docs/android/play-data-disclosure#crashlytics), including Crashlytics, Installations, and Sessions. For crash reporting, declare **Crash logs**, **Diagnostics**, **Device or other IDs**, and **App interactions** (session starts) as optional collection for **Analytics**, the Play Data safety purpose that covers diagnosing crashes. This does not mean the Google Analytics SDK is installed. Preserve the form's existing declarations for the browser, farm API, and wallet features. Crashlytics can include original exception messages and does not provide a client-side filter for automatic reports. Do not attach raw API responses, logs, URLs, credentials, or wallet details.
+
 ## Publishing releases
 
-In GitHub, open **Actions → Android Release Build → Run workflow** and select `main`. The workflow runs unit tests and publishes the verified, signed APK to GitHub Releases. It uses the repository's existing signing secrets: `RELEASE_KEYSTORE` (base64), `KEYSTORE_PASSWORD`, `KEY_ALIAS`, and `KEY_PASSWORD`. Pushing code does not start the release workflow.
+In GitHub, add an Actions repository secret named `FIREBASE_GOOGLE_SERVICES_JSON` with the contents of the Android Firebase config. Then open **Actions → Android Release Build → Run workflow** and select `main`. The workflow runs unit tests, verifies the APK signer, uploads the mapping for that APK to Crashlytics, and publishes the signed APK to GitHub Releases. The existing signing secrets are `RELEASE_KEYSTORE` (base64), `KEYSTORE_PASSWORD`, `KEY_ALIAS`, and `KEY_PASSWORD`. Pushing code does not start the release workflow.
+
+After publishing the versioned release, the workflow clears the uploaded assets on the `latest` release, uploads the new APK there, and verifies that it is the only uploaded file. Older APKs remain available on their versioned releases.
 
 GitHub APKs must match the signing certificate of the previously published GitHub APK so existing installations can update in place. That certificate differs from the original local APK's certificate; do not substitute the local key for the GitHub release key.
 
-For Google Play, build the AAB locally with `:app:bundleRelease`, use the upload key registered in Play Console, and upload the bundle manually. The GitHub workflow does not build or upload the AAB.
+For Google Play, build the AAB locally with `:app:bundleRelease -PrequireCrashReporting=true -PuploadCrashlyticsMapping=true`, use the upload key registered in Play Console, and upload the bundle manually. The GitHub workflow does not build or upload the AAB. Local builds omit the Crashlytics mapping upload unless explicitly requested; use the flags together for the exact build that will ship.
+
+Release bundles include their R8 mapping so Google Play can recover class names and source lines in **Android vitals → Crashes & ANRs**. For local ReTrace use, keep `app/build/outputs/mapping/release/mapping.txt` with its exact build; a later build replaces it. The mapping does not cover SQLCipher native crashes. Those require symbols that match the native binaries in the bundle.
 
 ## Project layout
 

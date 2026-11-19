@@ -5,6 +5,7 @@ import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
+import android.os.Build
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -58,7 +59,9 @@ internal fun styleBrowserButton(button: ImageButton, control: BrowserControl, si
         rounded(context, Color.WHITE),
     )
     button.contentDescription = context.getString(control.label)
-    button.tooltipText = button.contentDescription
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        button.tooltipText = button.contentDescription
+    }
 }
 
 internal fun addChromeControl(

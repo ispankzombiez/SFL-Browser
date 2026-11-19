@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="crash_reporting_title">Optional Error Reporting</string>
+    <string name="crash_reporting_message">This helps me fix errors and issues across different devices. Please consider turning it on. You can also turn it on later in Settings under Farm &amp; Sync if you experience any issues with the app.\n\nIf you allow reporting, Google Firebase receives crash details (including error messages) and app and device diagnostics. Your choice takes effect after you restart the app.\n\nI greatly appreciate you using my app &lt;3\n-iSPANK</string>
+    <string name="crash_reporting_decline">No thanks</string>
+    <string name="crash_reporting_allow">Allow</string>
+    <string name="crash_reporting_switch">Share crash reports</string>
+    <string name="crash_reporting_help">Optional. Google Firebase receives crash details (including error messages) and app and device diagnostics when reporting is on. Changes take effect after you restart the app.</string>
+</resources>

@@ -35,8 +35,17 @@ jobs:
             exit 1
           fi
 
+      - name: Configure crash reporting
+        env:
+          FIREBASE_GOOGLE_SERVICES_JSON: ${{ secrets.FIREBASE_GOOGLE_SERVICES_JSON }}
+        run: |
+          set -euo pipefail
+          umask 077
+          : "${FIREBASE_GOOGLE_SERVICES_JSON:?Missing FIREBASE_GOOGLE_SERVICES_JSON secret}"
+          printf '%s' "$FIREBASE_GOOGLE_SERVICES_JSON" > app/google-services.json
+
       - name: Run unit tests
-        run: bash ./gradlew --no-daemon :app:testDebugUnitTest
+        run: bash ./gradlew --no-daemon :app:testDebugUnitTest -PrequireCrashReporting=true
 
       - name: Build and verify signed APK
         id: apk
@@ -79,7 +88,7 @@ jobs:
           PY
           unset RELEASE_KEYSTORE KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD
 
-          bash ./gradlew --no-daemon :app:assembleRelease
+          bash ./gradlew --no-daemon :app:assembleRelease -PrequireCrashReporting=true
           apk=app/build/outputs/apk/release/app-release.apk
           tools="$ANDROID_HOME/build-tools/36.1.0"
           signature=$("$tools/apksigner" verify --verbose --print-certs "$apk")
@@ -101,6 +110,11 @@ jobs:
           mv "$apk" "$asset"
           printf 'version=%s\nasset=%s\n' "$version" "$asset" >> "$GITHUB_OUTPUT"
 
+      - name: Upload the signed APK's Crashlytics mapping
+        run: >
+          bash ./gradlew --no-daemon :app:uploadCrashlyticsMappingFileRelease
+          -PrequireCrashReporting=true -PuploadCrashlyticsMapping=true
+
       - name: Publish versioned GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -109,6 +123,35 @@ jobs:
           body: Signed SFL Browser ${{ steps.apk.outputs.version }} APK.
           files: ${{ steps.apk.outputs.asset }}
           fail_on_unmatched_files: true
+
+      - name: Clear uploaded assets from the latest GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APK_PATH: ${{ steps.apk.outputs.asset }}
+        run: |
+          set -euo pipefail
+          if [[ ! -s "$APK_PATH" ]]; then
+            echo "::error::The replacement APK is missing or empty. No assets were deleted."
+            exit 1
+          fi
+
+          release_api="repos/$GITHUB_REPOSITORY/releases"
+          release_id=$(gh api --paginate "$release_api?per_page=100" \
+            --jq '.[] | select(.tag_name == "latest") | .id')
+          if [[ -z "$release_id" ]]; then
+            echo "The latest release does not exist yet; nothing to clear."
+            exit 0
+          fi
+          if [[ ! "$release_id" =~ ^[0-9]+$ ]]; then
+            echo "::error::Expected a single release ID for the latest tag."
+            exit 1
+          fi
+
+          asset_ids=$(gh api --paginate "$release_api/$release_id/assets?per_page=100" --jq '.[].id')
+          while IFS= read -r asset_id; do
+            [[ -n "$asset_id" ]] || continue
+            gh api --method DELETE "$release_api/assets/$asset_id"
+          done <<< "$asset_ids"
 
       - name: Update latest GitHub Release
         uses: softprops/action-gh-release@v2
@@ -120,3 +163,17 @@ jobs:
           files: ${{ steps.apk.outputs.asset }}
           fail_on_unmatched_files: true
           make_latest: true
+
+      - name: Verify the latest release contains only the new APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APK_PATH: ${{ steps.apk.outputs.asset }}
+        run: |
+          set -euo pipefail
+          assets=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/latest" \
+            --jq '.assets[] | [.name, .state] | @tsv')
+          expected="${APK_PATH##*/}"$'\t'uploaded
+          if [[ "$assets" != "$expected" ]]; then
+            echo "::error::Expected exactly one uploaded asset on the latest release: ${APK_PATH##*/}"
+            exit 1
+          fi

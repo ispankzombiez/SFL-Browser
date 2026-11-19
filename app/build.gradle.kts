@@ -1,8 +1,22 @@
+import com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension
 import java.util.Properties
 
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+}
+
+val hasCrashReporting = layout.projectDirectory.file("google-services.json").asFile.isFile
+val requireCrashReporting = providers.gradleProperty("requireCrashReporting")
+    .map(String::toBooleanStrict).getOrElse(false)
+val uploadCrashlyticsMapping = providers.gradleProperty("uploadCrashlyticsMapping")
+    .map(String::toBooleanStrict).getOrElse(false)
+check(hasCrashReporting || !(requireCrashReporting || uploadCrashlyticsMapping)) {
+    "Crash reporting requires app/google-services.json for com.sfl.browser."
+}
+if (hasCrashReporting) {
+    apply(plugin = "com.google.gms.google-services")
+    apply(plugin = "com.google.firebase.crashlytics")
 }
 
 // Release signing credentials live in signing.properties (git-ignored). CI creates that
@@ -15,16 +29,25 @@ val signingProperties = Properties().apply {
     }
 }
 
+if (hasCrashReporting) {
+    // Keep the mapping ID in the APK/AAB even when a local build skips the upload.
+    tasks.matching { it.name == "uploadCrashlyticsMappingFileRelease" }.configureEach {
+        onlyIf("Mapping upload was requested with -PuploadCrashlyticsMapping=true") {
+            uploadCrashlyticsMapping
+        }
+    }
+}
+
 android {
     namespace = "com.sfl.browser"
     compileSdk = 36
 
     defaultConfig {
         applicationId = "com.sfl.browser"
-        minSdk = 26
+        minSdk = 24
         targetSdk = 36
-        versionCode = 52
-        versionName = "1.1.001"
+        versionCode = 55
+        versionName = "1.1.002"
 
         // WalletConnect Cloud project id. Overridable at runtime from the settings screen.
         buildConfigField("String", "WC_PROJECT_ID", "\"90b71431a0afd16c0a9f20210c2a87a3\"")
@@ -44,16 +67,36 @@ android {
     }
 
     buildTypes {
+        debug {
+            if (hasCrashReporting) {
+                configure<CrashlyticsExtension> {
+                    mappingFileUploadEnabled = false
+                }
+            }
+        }
         release {
-            // R8 is left off for now: the WalletConnect SDK relies on Koin/SQLDelight
-            // wiring that we cannot exercise on-device yet, and a stripped runtime crash
-            // is worse than a larger APK. Turn on once instrumented tests cover connect.
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            if (hasCrashReporting) {
+                configure<CrashlyticsExtension> {
+                    mappingFileUploadEnabled = true
+                }
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
             signingConfig = signingConfigs.getByName("release")
+        }
+    }
+
+    sourceSets {
+        getByName("main") {
+            java.srcDir(if (hasCrashReporting) "src/crashReporting/java" else "src/noCrashReporting/java")
+        }
+        if (hasCrashReporting) {
+            listOf("debug", "release").forEach { variant ->
+                getByName(variant).manifest.srcFile("src/crashReporting/AndroidManifest.xml")
+            }
         }
     }
 
@@ -84,6 +127,7 @@ android {
     }
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -98,6 +142,13 @@ android {
 }
 
 dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+
+    if (hasCrashReporting) {
+        implementation(platform("com.google.firebase:firebase-bom:35.2.0"))
+        implementation("com.google.firebase:firebase-crashlytics")
+    }
+
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
 
