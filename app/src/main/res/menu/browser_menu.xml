@@ -18,6 +18,11 @@
         app:showAsAction="never" />
 
     <item
+        android:id="@+id/menu_farm_tasks"
+        android:title="@string/farm_tasks_title"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/menu_settings"
         android:title="@string/menu_settings"
         app:showAsAction="never" />

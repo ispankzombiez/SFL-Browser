@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="alert_spice_rack">Spice Rack</string>
+    <string name="alert_aging_rack">Aging Rack</string>
+    <string name="alert_fermentation_rack">Fermentation Rack</string>
+    <string name="alert_daily_reset">Daily reset</string>
+    <string name="alert_daily_reset_message">A new farm day has started (00:00 UTC).</string>
+    <string name="alert_village_projects">Village Projects</string>
+    <string name="alert_project_reached">%1$s reached its goal</string>
+    <string name="village_cheers_count">%1$d / %2$d Cheers</string>
+    <string name="alert_mushroom_spawn">Mushroom spawns</string>
+    <string name="alert_mushroom_message">New mushrooms appeared on your farm.</string>
+    <string name="alert_magic_mushroom_message">A new Magic Mushroom appeared on your farm.</string>
+    <string name="alert_animal_sickness">Animal sickness</string>
+    <string name="alert_sick_animal">Sick animals</string>
+    <string name="alert_vip">VIP expiry</string>
+    <string name="alert_calendar">Calendar events</string>
+    <string name="alert_weather">Weather events</string>
+    <string name="alert_special_events">Special events</string>
+    <string name="alert_lead_minutes">Minutes before %1$s</string>
+    <string name="alert_lead_invalid">Enter a whole number of minutes.</string>
+    <string name="alert_upcoming_time">%1$s · %2$s</string>
+    <string name="alert_event_soon">%1$s starts soon</string>
+    <string name="alert_vip_soon">VIP expires soon</string>
+    <string name="farm_tasks_title">Deliveries &amp; Chores</string>
+    <string name="farm_tasks_subtitle">Deliveries, chores, and bounty progress</string>
+    <string name="farm_tasks_empty">No deliveries, chores, or bounties to show.</string>
+    <string name="farm_tasks_pending">Not Done</string>
+    <string name="farm_tasks_completed">Completed</string>
+    <string name="farm_status_done">DONE</string>
+    <string name="farm_task_deliveries">Deliveries</string>
+    <string name="farm_task_chores">Chores</string>
+    <string name="farm_task_bounties">Bounty Board</string>
+    <string name="farm_task_animal_bounties">Animal Bounties</string>
+    <string name="farm_task_animal_level">%1$s (level %2$d)</string>
+    <string name="farm_pet_satiation">Pet satiation</string>
+    <string name="farm_pet_neglected">Neglected</string>
+    <string name="farm_pet_satiated">Satiated</string>
+    <string name="farm_pet_neglect_at">Neglected in %1$s</string>
+    <string name="farm_faction_kitchen">Faction kitchen (today)</string>
+    <string name="farm_faction_pet">Faction pet (this week)</string>
+</resources>

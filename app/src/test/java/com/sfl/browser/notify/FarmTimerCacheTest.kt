@@ -23,6 +23,7 @@ class FarmTimerCacheTest {
         assertFalse(restored.canReuse("123", 0, savedAt, 999))
         assertFalse(restored.canReuse("123", 0, savedAt, 9000))
         assertNull(FarmTimerRevision.fromJson(revision.toJson().apply { remove("schema") }))
+        assertNull(FarmTimerRevision.fromJson(revision.toJson().put("schema", 2)))
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.sfl.browser.overview
 
+import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -82,6 +83,20 @@ abstract class TimerScreenActivity : PaletteActivity() {
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
         toolbar.title = getString(titleRes)
         toolbar.setNavigationOnClickListener { finish() }
+        toolbar.overflowIcon = getDrawable(R.drawable.ic_menu)?.mutate()?.apply {
+            setTint(appColor(this@TimerScreenActivity, R.color.sfl_cream))
+        }
+        listOf(
+            R.string.overview_title to OverviewActivity::class.java,
+            R.string.timeline_title to TimelineActivity::class.java,
+            R.string.farm_tasks_title to FarmTasksActivity::class.java,
+        ).filter { (label, _) -> label != titleRes }.forEach { (label, activity) ->
+            toolbar.menu.add(label).setOnMenuItemClickListener {
+                startActivity(Intent(this, activity))
+                finish()
+                true
+            }
+        }
         findViewById<TextView>(R.id.txtSubtitle).setText(subtitleRes)
         container = findViewById(R.id.container)
         swipe = findViewById(R.id.swipe)
@@ -119,6 +134,7 @@ abstract class TimerScreenActivity : PaletteActivity() {
     }
 
     private fun onResult(result: TimerFeed.Result) {
+        if (isDestroyed || isFinishing) return
         val now = System.currentTimeMillis()
         timers = result.timers.filter {
             it.category != com.sfl.browser.data.TimerCategory.ANIMAL_LOVE && !it.isMachineOilAlert &&
@@ -210,6 +226,42 @@ abstract class TimerScreenActivity : PaletteActivity() {
             registerStatus(status, timer)
         }
         parent.addView(row)
+    }
+
+    protected fun section(title: String): LinearLayout {
+        val panel = layoutInflater.inflate(R.layout.view_timer_panel, container, false)
+        panel.findViewById<TextView>(R.id.txtSectionTitle).text = title
+        container.addView(panel)
+        return panel.findViewById(R.id.rows)
+    }
+
+    protected fun statusRow(parent: LinearLayout, title: String, detail: String,
+                            statusText: Int? = null, good: Boolean = true): View {
+        val row = layoutInflater.inflate(R.layout.view_timer_row, parent, false)
+        row.findViewById<View>(R.id.imgIcon).visibility = View.GONE
+        row.findViewById<TextView>(R.id.txtLabel).apply {
+            text = title
+            maxLines = Int.MAX_VALUE
+        }
+        row.findViewById<TextView>(R.id.txtDetail).apply {
+            text = detail
+            maxLines = Int.MAX_VALUE
+            visibility = if (detail.isBlank()) View.GONE else View.VISIBLE
+        }
+        row.findViewById<TextView>(R.id.txtStatus).apply {
+            if (statusText == null) visibility = View.GONE
+            else {
+                setText(statusText)
+                if (statusText == R.string.timer_not_done || statusText == R.string.farm_status_done) {
+                    textSize = 15f
+                    minHeight = dp(34)
+                }
+                applyPaletteBackground(this, if (good) R.color.sfl_chip_ready else R.color.sfl_chip_danger, 5)
+                setTextColor(appColor(context, if (good) R.color.sfl_on_chip_ready else R.color.sfl_on_chip_danger))
+            }
+        }
+        parent.addView(row)
+        return row
     }
 
     protected fun addGroupedRows(parent: LinearLayout, items: List<FarmTimer>) {

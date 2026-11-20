@@ -24,7 +24,7 @@ internal data class FarmTimerRevision(
         .put("evaluatedAt", evaluatedAt).put("refreshAt", refreshAt)
 
     companion object {
-        private const val SCHEMA = 1
+        private const val SCHEMA = 3
 
         fun fromJson(json: JSONObject): FarmTimerRevision? {
             if (json.optInt("schema") != SCHEMA) return null
@@ -70,11 +70,14 @@ internal object FarmTimerCache {
         val revision = if (snapshot != null && updatedAt != null) {
             FarmTimerRevision(farmId, mode, updatedAt, now, snapshot.refreshAt)
         } else null
-        val timers = TimerAlarm.applyFarmFetch(context, farmId, mode, now, revision, snapshot?.timers, baseline)
+        val details = FarmDetails.extract(farm, now)
+        val timers = TimerAlarm.applyFarmFetch(context, farmId, mode, now, revision, snapshot?.timers, baseline, details)
         if (timers == null) {
             Log.i("FarmTimerCache", "Ignoring a farm response after its settings or cache changed")
             return null
         }
+        if (baseline != null) FarmPollAlerts.check(context, farmId, FarmDetails.pollState(farm, details, now), baseline)
+        FarmReminders.reconcile(context, deliverDue = baseline != null)
         return Refresh(timers, now)
     }
 }

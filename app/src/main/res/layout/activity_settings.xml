@@ -489,6 +489,12 @@
             android:layout_height="wrap_content"
             android:text="@string/label_enable_sales" />
 
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/enableAcceptedOffers"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/label_enable_accepted_offers" />
+
         </LinearLayout>
 
         <LinearLayout

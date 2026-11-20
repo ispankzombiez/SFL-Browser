@@ -1,7 +1,9 @@
 package com.sfl.browser.data
 
 import android.content.Context
+import android.util.Log
 import org.json.JSONArray
+import org.json.JSONException
 import org.json.JSONObject
 import java.net.URI
 import java.util.UUID
@@ -12,29 +14,43 @@ data class HomeTab(val id: String, val name: String, val url: String)
 object HomeTabs {
     private const val PREFS_FILE = "home_tabs"
     private const val TABS_KEY = "tabs"
+    private const val STARTER_TABS_KEY = "calculatorWikiStarterTabsApplied"
+    private val legacyDefaults = setOf(
+        HomeTab("default-sfl-world", "sfl.world", "https://sfl.world/"),
+        HomeTab("default-sfl-wiki", "Sfl Wiki", "https://wiki.sfl.world/en/home"),
+    )
+    private val starterTabs = listOf(
+        HomeTab("starter-sfl-calculator", "SFL Calculator", "https://www.sfl-calculator.com/"),
+        HomeTab("starter-sfl-wiki", "SFL Wiki", "https://wiki.sfl.world/"),
+    )
 
-    @Suppress("DEPRECATION")
     fun initialize(context: Context) {
         val storage = prefs(context)
-        if (storage.contains(TABS_KEY) && Prefs.hasHomeUrl(context)) return
-        val info = context.packageManager.getPackageInfo(context.packageName, 0)
-        val freshInstall = info.firstInstallTime == info.lastUpdateTime
-        Prefs.initializeHomeUrl(context, freshInstall)
-        initialTabs(storage.contains(TABS_KEY), freshInstall)?.let { save(context, it) }
+        if (storage.getBoolean(STARTER_TABS_KEY, false)) return
+        val saved = readTabs(context) ?: return
+        Prefs.initializeStarterHomeUrl(context)
+        save(context, withStarterTabs(saved), markStarterTabsApplied = true)
     }
 
-    internal fun initialTabs(hasSavedTabs: Boolean, freshInstall: Boolean): List<HomeTab>? = when {
-        hasSavedTabs -> null
-        !freshInstall -> emptyList()
-        else -> listOf(
-            HomeTab("default-sfl-world", "sfl.world", "https://sfl.world/"),
-            HomeTab("default-sfl-wiki", "Sfl Wiki", "https://wiki.sfl.world/en/home"),
-        )
+    internal fun withStarterTabs(saved: List<HomeTab>): List<HomeTab> {
+        val remaining = saved.filterNot { it in legacyDefaults }.toMutableList()
+        val starters = starterTabs.map { starter ->
+            val index = remaining.indexOfFirst { it.name == starter.name && it.url == starter.url }
+            if (index >= 0) remaining.removeAt(index) else starter
+        }
+        return starters + remaining
     }
 
-    fun list(context: Context): List<HomeTab> {
+    fun list(context: Context): List<HomeTab> = readTabs(context).orEmpty()
+
+    private fun readTabs(context: Context): List<HomeTab>? {
         val saved = prefs(context).getString(TABS_KEY, null) ?: return emptyList()
-        val array = runCatching { JSONArray(saved) }.getOrNull() ?: return emptyList()
+        val array = try {
+            JSONArray(saved)
+        } catch (_: JSONException) {
+            Log.w("HomeTabs", "Saved tab data is malformed")
+            return null
+        }
         return (0 until array.length()).mapNotNull { index ->
             val item = array.optJSONObject(index) ?: return@mapNotNull null
             val id = item.optString("id")
@@ -68,12 +84,14 @@ object HomeTabs {
         })
     }
 
-    private fun save(context: Context, tabs: List<HomeTab>) {
+    private fun save(context: Context, tabs: List<HomeTab>, markStarterTabsApplied: Boolean = false) {
         val array = JSONArray()
         tabs.forEach { tab ->
             array.put(JSONObject().put("id", tab.id).put("name", tab.name).put("url", tab.url))
         }
-        prefs(context).edit().putString(TABS_KEY, array.toString()).apply()
+        val edit = prefs(context).edit().putString(TABS_KEY, array.toString())
+        if (markStarterTabsApplied) edit.putBoolean(STARTER_TABS_KEY, true)
+        edit.apply()
     }
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)

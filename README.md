@@ -8,11 +8,15 @@ The app supports Android 7.0 (API 24) and later. On Android 7, notifications use
 
 ## Using the app
 
-- **Full browser** opens the game in the built-in browser. The browser layout and native colors are customizable, and the game can initiate supported WalletConnect connections.
+- **Full browser** opens Home in the built-in browser. The tab switcher starts with Home, SFL Calculator, and SFL Wiki; Calculator and Wiki load only when selected. On upgrade, the app replaces untouched old defaults once and keeps custom tabs and a custom Home URL. The browser layout and native colors are customizable, and the game can initiate supported WalletConnect connections.
 - **Notifications only** lets you use farm and price alerts without opening the built-in browser.
-- Long-press the launcher icon for **Overview**, **Timeline**, and **Settings** shortcuts.
+- Long-press the launcher icon for **Overview**, **Timeline**, **Settings**, and **Deliveries & Chores** shortcuts. Use the top-right menu in any farm page to switch between those farm pages.
 
 To set up alerts, allow Android notifications and open **Settings → Farm & Sync**. Enter your **Farm ID** and **Sunflower Land API key**, then tap **Run a check now** to verify the setup. The relevant in-game menu is **Settings → three-dot menu**: the Farm ID is at the top, and the API key is under **General → API Key**. Exact alarms and ignoring battery optimisation are optional and can be changed later.
+
+The **Daily reset** alert targets 00:00 UTC independently of the farm offset and battery-saving setting. **VIP expiry**, **Calendar events**, **Weather events**, and **Special events** have separate switches and lead times. Date-only entries start at 00:00 UTC. Village Project goals, new animal sickness, and mushroom spawns are detected on farm polls; the first observed state is recorded without alerting about older changes.
+
+Under **Settings → Notifications**, listing sales and accepted buy offers have separate switches. When one marketplace check finds multiple newly sold listings, it sends one notification with the total number of items sold and total FLOWER. Accepted-offer alerts are on by default and stay separate, even though they use the same marketplace check.
 
 ## Building from source
 
@@ -39,7 +43,7 @@ Before rollout, publish the privacy policy and update **Play Console → App con
 
 In GitHub, add an Actions repository secret named `FIREBASE_GOOGLE_SERVICES_JSON` with the contents of the Android Firebase config. Then open **Actions → Android Release Build → Run workflow** and select `main`. The workflow runs unit tests, verifies the APK signer, uploads the mapping for that APK to Crashlytics, and publishes the signed APK to GitHub Releases. The existing signing secrets are `RELEASE_KEYSTORE` (base64), `KEYSTORE_PASSWORD`, `KEY_ALIAS`, and `KEY_PASSWORD`. Pushing code does not start the release workflow.
 
-After publishing the versioned release, the workflow clears the uploaded assets on the `latest` release, uploads the new APK there, and verifies that it is the only uploaded file. Older APKs remain available on their versioned releases.
+After publishing the versioned release, the workflow moves the `latest` tag to the built commit and recreates the rolling `latest` release with a fresh publication date and only the new APK. Its page may be briefly unavailable during replacement, and its download count resets. Older APKs and their download counts stay on their versioned releases.
 
 GitHub APKs must match the signing certificate of the previously published GitHub APK so existing installations can update in place. That certificate differs from the original local APK's certificate; do not substitute the local key for the GitHub release key.
 

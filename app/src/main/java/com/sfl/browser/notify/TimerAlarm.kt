@@ -46,8 +46,11 @@ object TimerAlarm {
      * Safe to call from the worker, the boot receiver and the settings screen.
      */
     @Synchronized
-    fun scheduleAll(context: Context, forceRearm: Boolean = false) =
+    fun scheduleAll(context: Context, forceRearm: Boolean = false) {
+        DailyResetAlarm.schedule(context)
+        FarmReminders.schedule(context)
         scheduleAll(context, forceRearm, FarmTimers.fromJson(Prefs.timersJson(context)))
+    }
 
     private fun scheduleAll(context: Context, forceRearm: Boolean, timers: List<FarmTimer>) {
         val app = context.applicationContext
@@ -152,8 +155,10 @@ object TimerAlarm {
         revision: FarmTimerRevision?,
         changed: List<FarmTimer>?,
         baseline: Boolean?,
+        details: org.json.JSONObject? = null,
     ): List<FarmTimer>? {
-        if (!Prefs.recordFarmFetch(context, farmId, cookingMode, fetchedAt, revision, changed?.let(FarmTimers::toJson))) {
+        if (!Prefs.recordFarmFetch(context, farmId, cookingMode, fetchedAt, revision,
+                changed?.let(FarmTimers::toJson), details)) {
             return null
         }
         val timers = changed ?: FarmTimers.fromJson(Prefs.timersJson(context))

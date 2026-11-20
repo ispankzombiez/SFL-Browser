@@ -15,4 +15,9 @@
         <intent android:action="com.sfl.browser.OPEN_SETTINGS"
             android:targetPackage="com.sfl.browser" android:targetClass="com.sfl.browser.ui.MainActivity" />
     </shortcut>
+    <shortcut android:shortcutId="farm_tasks" android:enabled="true"
+        android:icon="@mipmap/ic_launcher" android:shortcutShortLabel="@string/farm_tasks_title">
+        <intent android:action="com.sfl.browser.OPEN_FARM_TASKS"
+            android:targetPackage="com.sfl.browser" android:targetClass="com.sfl.browser.ui.MainActivity" />
+    </shortcut>
 </shortcuts>

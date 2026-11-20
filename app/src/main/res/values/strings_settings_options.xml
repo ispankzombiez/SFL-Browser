@@ -18,7 +18,7 @@
     <string name="notif_machine_no_oil">Crop Machine out of oil</string>
     <string name="notif_machine_add_oil">Add oil to resume growing the remaining packs.</string>
     <string name="label_home_tabs">Additional home tabs</string>
-    <string name="help_home_tabs">New installs start with sfl.world and Sfl Wiki alongside Home. You can edit, remove, or add tabs here. To change where Home opens, change the Home URL above.</string>
+    <string name="help_home_tabs">The starter tabs are Home, SFL Calculator, and SFL Wiki. Use the tab switcher to open Calculator or Wiki. You can edit, remove, or add tabs here. To change where Home opens, change the Home URL above.</string>
     <string name="btn_add_home_tab">Add home tab</string>
     <string name="label_home_tab_name">Tab name</string>
     <string name="label_home_tab_url">Website URL</string>
@@ -48,7 +48,7 @@
     <string name="check_events">Event processing</string>
     <string name="check_raffles">Raffles</string>
     <string name="check_auctions">Auctions</string>
-    <string name="check_sales">Sales</string>
+    <string name="check_sales">Marketplace trades</string>
     <string name="check_prices">Price alerts</string>
     <string name="check_prices_no_alerts">skipped — no alerts configured</string>
     <string name="check_prices_counts">%1$d of %2$d completed</string>

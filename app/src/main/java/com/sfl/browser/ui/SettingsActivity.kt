@@ -48,6 +48,10 @@ import com.sfl.browser.data.PriceAlert
 import com.sfl.browser.data.SecureStore
 import com.sfl.browser.data.TimerCategory
 import com.sfl.browser.diagnostics.CrashReporting
+import com.sfl.browser.notify.DailyResetAlarm
+import com.sfl.browser.notify.FarmPollAlerts
+import com.sfl.browser.notify.FarmReminderKind
+import com.sfl.browser.notify.FarmReminders
 import com.sfl.browser.notify.PollFeedback
 import com.sfl.browser.notify.PollScheduler
 import com.sfl.browser.notify.TimerAlarm
@@ -86,6 +90,7 @@ class SettingsActivity : PaletteActivity() {
     private lateinit var leadValue: EditText
     private lateinit var leadUnit: Spinner
     private lateinit var enableSales: com.google.android.material.materialswitch.MaterialSwitch
+    private lateinit var enableAcceptedOffers: MaterialSwitch
     private lateinit var enablePrices: com.google.android.material.materialswitch.MaterialSwitch
     private lateinit var priceAlertList: LinearLayout
     private lateinit var priceAlertEmpty: TextView
@@ -377,6 +382,7 @@ class SettingsActivity : PaletteActivity() {
         leadValue = findViewById(R.id.leadValue)
         leadUnit = findViewById(R.id.leadUnit)
         enableSales = findViewById(R.id.enableSales)
+        enableAcceptedOffers = findViewById(R.id.enableAcceptedOffers)
         enablePrices = findViewById(R.id.enablePrices)
         priceAlertList = findViewById(R.id.priceAlertList)
         priceAlertEmpty = findViewById(R.id.priceAlertEmpty)
@@ -411,6 +417,7 @@ class SettingsActivity : PaletteActivity() {
         leadValue.setText(Prefs.leadValue(this).toString())
         leadUnit.setSelection(Prefs.leadUnit(this))
         enableSales.isChecked = Prefs.enableSales(this)
+        enableAcceptedOffers.isChecked = Prefs.enableAcceptedOffers(this)
         enablePrices.isChecked = Prefs.enablePrices(this)
 
         refreshGrants()
@@ -442,6 +449,9 @@ class SettingsActivity : PaletteActivity() {
             TimerCategoryOption(TimerCategory.EXPANSION, R.string.category_expansion),
             TimerCategoryOption(TimerCategory.COLLECTIBLES, R.string.category_collectibles),
             TimerCategoryOption(TimerCategory.CAVE, R.string.category_cave),
+            TimerCategoryOption(TimerCategory.SPICE_RACK, R.string.alert_spice_rack),
+            TimerCategoryOption(TimerCategory.AGING_RACK, R.string.alert_aging_rack),
+            TimerCategoryOption(TimerCategory.FERMENTATION_RACK, R.string.alert_fermentation_rack),
             TimerCategoryOption(TimerCategory.CROP_MACHINE, R.string.cat_crop_machine),
             TimerCategoryOption(TimerCategory.CHICKEN_FEEDING, R.string.category_chicken_feeding),
             TimerCategoryOption(TimerCategory.COW_FEEDING, R.string.category_cow_feeding),
@@ -469,6 +479,52 @@ class SettingsActivity : PaletteActivity() {
             }
             timerCategoryToggles.addView(toggle)
         }
+        addFarmAlertSwitch(DailyResetAlarm.KEY, R.string.alert_daily_reset)
+        addFarmAlertSwitch(FarmPollAlerts.PROJECTS, R.string.alert_village_projects)
+        addFarmAlertSwitch(FarmPollAlerts.SICK, R.string.alert_animal_sickness)
+        addFarmAlertSwitch(FarmPollAlerts.MUSHROOMS, R.string.alert_mushroom_spawn)
+        for (kind in FarmReminderKind.values()) {
+            addFarmAlertSwitch(kind.key, kind.label, advanceReminder = true)
+        }
+    }
+
+    private fun addFarmAlertSwitch(key: String, label: Int, advanceReminder: Boolean = false) {
+        val lead = if (advanceReminder) EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_NUMBER
+            hint = getString(R.string.alert_lead_minutes, getString(label))
+            contentDescription = hint
+            importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO
+            setText(Prefs.farmAlertLead(this@SettingsActivity, key).toString())
+            isEnabled = Prefs.farmAlertEnabled(this@SettingsActivity, key)
+            watchText(this) {
+                text.toString().toIntOrNull()?.let { minutes ->
+                    if (minutes != Prefs.farmAlertLead(this@SettingsActivity, key)) {
+                        Prefs.setFarmAlertLead(this@SettingsActivity, key, minutes)
+                        FarmReminders.schedule(this@SettingsActivity)
+                    }
+                    error = null
+                } ?: run { error = getString(R.string.alert_lead_invalid) }
+            }
+        } else null
+        val toggle = com.google.android.material.materialswitch.MaterialSwitch(this).apply {
+            setText(label)
+            setTextColor(getColor(R.color.sfl_text_black))
+            isChecked = Prefs.farmAlertEnabled(this@SettingsActivity, key)
+            setOnCheckedChangeListener { _, enabled ->
+                Prefs.setFarmAlertEnabled(this@SettingsActivity, key, enabled)
+                lead?.isEnabled = enabled
+                TimerAlarm.scheduleAll(this@SettingsActivity)
+            }
+        }
+        timerCategoryToggles.addView(toggle, LinearLayout.LayoutParams(-1, -2))
+        if (lead != null) {
+            val caption = TextView(this).apply {
+                text = getString(R.string.alert_lead_minutes, getString(label))
+                setTextColor(getColor(R.color.sfl_text_black))
+            }
+            timerCategoryToggles.addView(caption)
+            timerCategoryToggles.addView(lead, LinearLayout.LayoutParams(-1, -2))
+        }
     }
 
     private fun bindImmediateListeners() {
@@ -483,6 +539,7 @@ class SettingsActivity : PaletteActivity() {
             val value = farmId.text.toString().trim()
             if (value != Prefs.farmId(this)) {
                 Prefs.setFarmId(this, value)
+                FarmReminders.schedule(this)
                 farmSettingsChanged = true
             }
         }
@@ -539,6 +596,12 @@ class SettingsActivity : PaletteActivity() {
             if (enabled != Prefs.enableSales(this)) {
                 Prefs.setEnableSales(this, enabled)
                 runNowIfConfigured()
+            }
+            enableAcceptedOffers.setOnCheckedChangeListener { _, enabled ->
+                if (enabled != Prefs.enableAcceptedOffers(this)) {
+                    Prefs.setEnableAcceptedOffers(this, enabled)
+                    runNowIfConfigured()
+                }
             }
         }
         enablePrices.setOnCheckedChangeListener { _, enabled ->

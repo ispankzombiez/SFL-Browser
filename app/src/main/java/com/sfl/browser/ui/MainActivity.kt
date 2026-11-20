@@ -45,6 +45,7 @@ import com.sfl.browser.data.Prefs
 import com.sfl.browser.notify.PollScheduler
 import com.sfl.browser.notify.TimerAlarm
 import com.sfl.browser.overview.OverviewActivity
+import com.sfl.browser.overview.FarmTasksActivity
 import com.sfl.browser.overview.TimelineActivity
 import com.sfl.browser.wallet.EthereumBridge
 import com.sfl.browser.wallet.WalletConnectManager
@@ -198,6 +199,7 @@ class MainActivity : PaletteActivity() {
         val shortcut = if (openFarmSync) SettingsActivity.farmSyncIntent(this) else when (launch?.action) {
             OPEN_OVERVIEW -> Intent(this, OverviewActivity::class.java)
             OPEN_TIMELINE -> Intent(this, TimelineActivity::class.java)
+            OPEN_FARM_TASKS -> Intent(this, FarmTasksActivity::class.java)
             OPEN_SETTINGS -> Intent(this, SettingsActivity::class.java)
             else -> null
         }
@@ -700,6 +702,11 @@ class MainActivity : PaletteActivity() {
             true
         }
 
+        R.id.menu_farm_tasks -> {
+            startActivity(Intent(this, FarmTasksActivity::class.java))
+            true
+        }
+
         R.id.menu_settings -> {
             startActivity(Intent(this, SettingsActivity::class.java))
             true
@@ -797,6 +804,7 @@ class MainActivity : PaletteActivity() {
         private const val OPEN_SETTINGS = "com.sfl.browser.OPEN_SETTINGS"
         private const val OPEN_OVERVIEW = "com.sfl.browser.OPEN_OVERVIEW"
         private const val OPEN_TIMELINE = "com.sfl.browser.OPEN_TIMELINE"
+        private const val OPEN_FARM_TASKS = "com.sfl.browser.OPEN_FARM_TASKS"
         const val OPEN_NOTIFICATION = "com.sfl.browser.OPEN_NOTIFICATION"
         private const val EXTRA_OPEN_IN_MAIN_TAB = "com.sfl.browser.OPEN_IN_MAIN_TAB"
         private const val DISCLAIMER_DELAY_MS = 5_000L

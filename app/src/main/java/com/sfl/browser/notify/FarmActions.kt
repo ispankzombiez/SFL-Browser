@@ -75,14 +75,11 @@ internal object FarmActions {
 
         val todayStart = FarmDay.start(now)
         val reset = FarmDay.nextReset(now)
-        val quest = farm.optJSONObject("telegram")?.optJSONObject("quest")
-        if (quest != null) {
-            yields.checkAgainAt(reset, quest.optLong("startAt"))
-            // A dated quest record can remain after the choices are gone.
-            val choices = quest.optJSONArray("choices")
-            if (quest.optLong("startAt") in todayStart..now &&
-                choices != null && (0 until choices.length()).any { !choices.isNull(it) }
-            ) {
+        val questStart = farm.optJSONObject("telegram")?.optJSONObject("quest")?.optLong("startAt") ?: 0L
+        if (questStart > 0) {
+            yields.checkAgainAt(reset, questStart)
+            // Claiming advances startAt to the next UTC day; choices can be empty before a claim.
+            if (questStart in todayStart..now) {
                 entry("quest", "telegram", "Telegram daily quest", todayStart, expiresAt = reset)
             }
         }
@@ -105,15 +102,20 @@ internal object FarmActions {
         if (objects(buildings?.optJSONArray("Aging Shed")).any {
                 it.second.optJSONObject("coordinates") != null
             }) {
-            for ((rack, label) in mapOf(
-                "aging" to "Aging Rack", "fermentation" to "Fermentation Rack", "spice" to "Spice Rack",
+            for ((rack, label, category) in listOf(
+                Triple("aging", "Aging Rack", TimerCategory.AGING_RACK),
+                Triple("fermentation", "Fermentation Rack", TimerCategory.FERMENTATION_RACK),
+                Triple("spice", "Spice Rack", TimerCategory.SPICE_RACK),
             )) {
                 for ((i, job) in objects(racks?.optJSONArray(rack))) {
                     val readyAt = job.optLong("readyAt")
                     if (readyAt <= 0) continue
-                    val recipe = if (rack == "spice") job.optString("recipe").ifBlank { null } else null
-                    entry("agingshed", "$rack:${job.optString("id", i.toString())}",
-                        recipe ?: label, readyAt, amount = recipe?.let { workshop.spice(it, job) })
+                    val name = job.optString(if (rack == "aging") "fish" else "recipe").ifBlank { label }
+                    add(FarmTimer(
+                        "agingshed:$rack:${job.optString("id", i.toString())}", name, readyAt,
+                        iconFor(name), label, category,
+                        yieldAmount = if (rack == "spice") workshop.spice(name, job) else null,
+                    ))
                 }
             }
         }

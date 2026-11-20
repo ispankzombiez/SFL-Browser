@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.sfl.browser.BuildConfig
 import com.sfl.browser.notify.FarmTimerRevision
+import com.sfl.browser.notify.MarketplaceTradeAlert
+import com.sfl.browser.notify.MarketplaceTradeAlerts
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -62,6 +64,9 @@ object Prefs {
     // Keys for the JSON state blobs.
     private const val K_TIMERS = "state.timers"
     private const val K_LAST_FETCHED = "state.lastFetchedAt"
+    private const val K_FARM_DETAILS = "state.farmDetails"
+    private const val K_FARM_POLL_MARKS = "state.farmPollMarks"
+    private const val K_FARM_REMINDERS_SEEN = "state.farmRemindersSeen"
     private const val K_TIMER_REVISION = "state.timerRevision"
     private const val K_SCHEDULED = "state.scheduled"
     private const val K_FIRED = "state.fired"
@@ -89,7 +94,9 @@ object Prefs {
         val normalized = value.trim()
         if (farmId(context) != normalized) {
             sp(context).edit().putString("farmId", normalized)
-                .remove(K_TIMER_REVISION).remove(K_LAST_FETCHED).apply()
+                .remove(K_TIMER_REVISION).remove(K_LAST_FETCHED)
+                .remove(K_FARM_DETAILS).remove(K_FARM_POLL_MARKS).remove(K_FARM_REMINDERS_SEEN)
+                .remove(K_SEEN_SALES).apply()
         }
     }
 
@@ -144,13 +151,14 @@ object Prefs {
         sp(context).edit().putString(K_NOTIFICATION_APP, packageName).apply()
     }
 
-    internal fun hasHomeUrl(context: Context) = sp(context).contains(K_HOME_URL)
-
-    internal fun initializeHomeUrl(context: Context, freshInstall: Boolean) {
-        if (!hasHomeUrl(context)) {
-            setHomeUrl(context, if (freshInstall) DEFAULT_HOME_URL else LEGACY_HOME_URL)
-        }
+    internal fun initializeStarterHomeUrl(context: Context) {
+        val saved = sp(context).getString(K_HOME_URL, null)
+        val home = starterHomeUrl(saved)
+        if (home != saved) setHomeUrl(context, home)
     }
+
+    internal fun starterHomeUrl(saved: String?): String =
+        if (saved == null || saved == LEGACY_HOME_URL) DEFAULT_HOME_URL else saved
 
     fun homeUrl(context: Context): String =
         sp(context).getString(K_HOME_URL, DEFAULT_HOME_URL) ?: DEFAULT_HOME_URL
@@ -254,7 +262,28 @@ object Prefs {
         category != TimerCategory.DISPLAY_ONLY &&
             sp(context).getBoolean("enableTimerCategory.${category.key}",
                 category == TimerCategory.ANIMAL_LOVE || category.isFeeding ||
-                    category == TimerCategory.CROP_MACHINE || enableTimers(context))
+                    category == TimerCategory.CROP_MACHINE || category.isAgingShed || enableTimers(context))
+
+    internal fun farmAlertEnabled(context: Context, key: String): Boolean =
+        sp(context).getBoolean("farmAlert.$key", true)
+
+    internal fun setFarmAlertEnabled(context: Context, key: String, enabled: Boolean) {
+        sp(context).edit().putBoolean("farmAlert.$key", enabled).apply()
+    }
+
+    internal fun farmAlertLead(context: Context, key: String): Int =
+        sp(context).getInt("farmAlertLead.$key", DEFAULT_LEAD_VALUE)
+
+    internal fun setFarmAlertLead(context: Context, key: String, minutes: Int) {
+        sp(context).edit().putInt("farmAlertLead.$key", minutes.coerceAtLeast(0)).apply()
+    }
+
+    internal fun dailyResetDelivered(context: Context): Long =
+        sp(context).getLong("state.dailyResetDelivered", Long.MIN_VALUE)
+
+    internal fun setDailyResetDelivered(context: Context, at: Long) {
+        sp(context).edit().putLong("state.dailyResetDelivered", at).apply()
+    }
 
     fun setTimerCategoryEnabled(context: Context, category: TimerCategory, value: Boolean) {
         sp(context).edit().putBoolean("enableTimerCategory.${category.key}", value).apply()
@@ -302,6 +331,13 @@ object Prefs {
 
     fun setEnableSales(context: Context, value: Boolean) {
         sp(context).edit().putBoolean("enableSales", value).apply()
+    }
+
+    fun enableAcceptedOffers(context: Context): Boolean =
+        sp(context).getBoolean("enableAcceptedOffers", true)
+
+    fun setEnableAcceptedOffers(context: Context, value: Boolean) {
+        sp(context).edit().putBoolean("enableAcceptedOffers", value).apply()
     }
 
     fun enablePrices(context: Context): Boolean = sp(context).getBoolean("enablePrices", true)
@@ -391,17 +427,47 @@ object Prefs {
         fetchedAt: Long,
         revision: FarmTimerRevision?,
         timers: JSONArray?,
+        details: JSONObject? = null,
     ): Boolean = synchronized(lock) {
         if (farmId(context) != farmId || cookingMode(context) != cookingMode ||
             (timers == null && !sp(context).contains(K_TIMER_REVISION))
         ) return@synchronized false
         val edit = sp(context).edit().putLong(K_LAST_FETCHED, fetchedAt)
+        if (details != null) edit.putString(K_FARM_DETAILS, details.toString())
         if (timers != null) {
             edit.putString(K_TIMERS, timers.toString())
             if (revision == null) edit.remove(K_TIMER_REVISION)
             else edit.putString(K_TIMER_REVISION, revision.toJson().put("appVersion", BuildConfig.VERSION_CODE).toString())
         }
         edit.apply()
+        true
+    }
+
+    internal fun farmDetails(context: Context): JSONObject = readObject(context, K_FARM_DETAILS)
+
+    internal fun replaceFarmPollMarks(context: Context, farm: String, marks: JSONObject): JSONObject? =
+        synchronized(lock) {
+            if (farm != farmId(context)) return@synchronized null
+            val previous = readObject(context, K_FARM_POLL_MARKS)
+            // A missing API section is not proof that its tracked state has reset.
+            val merged = JSONObject(previous.toString())
+            for (key in marks.keys()) {
+                if (key == "sick" || key == "projects") {
+                    val herds = merged.optJSONObject(key) ?: JSONObject()
+                    val current = marks.getJSONObject(key)
+                    for (herd in current.keys()) herds.put(herd, current.get(herd))
+                    merged.put(key, herds)
+                } else merged.put(key, marks.get(key))
+            }
+            writeBlob(context, K_FARM_POLL_MARKS, merged.toString())
+            previous
+        }
+
+    internal fun farmRemindersSeen(context: Context): JSONObject = readObject(context, K_FARM_REMINDERS_SEEN)
+
+    internal fun setFarmRemindersSeen(context: Context, farm: String, value: JSONObject): Boolean = synchronized(lock) {
+        if (farm != farmId(context)) return@synchronized false
+        writeBlob(context, K_FARM_REMINDERS_SEEN, value.toString())
         true
     }
 
@@ -431,11 +497,15 @@ object Prefs {
     fun setSeenEvents(context: Context, value: JSONObject) =
         writeBlob(context, K_SEEN_EVENTS, value.toString())
 
-    /** marketplace trade ids we have already announced as sold. */
-    fun seenSales(context: Context): JSONObject = readObject(context, K_SEEN_SALES)
-
-    fun setSeenSales(context: Context, value: JSONObject) =
-        writeBlob(context, K_SEEN_SALES, value.toString())
+    internal fun recordMarketplaceTrades(
+        context: Context, farm: String, trades: JSONArray, baseline: Boolean,
+    ): List<MarketplaceTradeAlert> = synchronized(lock) {
+        if (farm != farmId(context)) return@synchronized emptyList()
+        val previous = readObject(context, K_SEEN_SALES).takeIf { sp(context).contains(K_SEEN_SALES) }
+        val scan = MarketplaceTradeAlerts.scan(trades, farm, previous, baseline)
+        writeBlob(context, K_SEEN_SALES, scan.seen.toString())
+        scan.alerts
+    }
 
     /**
      * True once the first poll has recorded the current state silently. Without

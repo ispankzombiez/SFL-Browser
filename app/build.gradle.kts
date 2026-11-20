@@ -46,8 +46,8 @@ android {
         applicationId = "com.sfl.browser"
         minSdk = 24
         targetSdk = 36
-        versionCode = 55
-        versionName = "1.1.002"
+        versionCode = 56
+        versionName = "1.1.003"
 
         // WalletConnect Cloud project id. Overridable at runtime from the settings screen.
         buildConfigField("String", "WC_PROJECT_ID", "\"90b71431a0afd16c0a9f20210c2a87a3\"")

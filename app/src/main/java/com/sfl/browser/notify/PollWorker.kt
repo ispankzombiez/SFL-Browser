@@ -10,6 +10,7 @@ import com.sfl.browser.data.ItemIcons
 import com.sfl.browser.data.Prefs
 import com.sfl.browser.data.TimelineEvents
 import org.json.JSONObject
+import java.text.NumberFormat
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.util.concurrent.CancellationException
@@ -80,8 +81,8 @@ class PollWorker(appContext: Context, params: WorkerParameters) : Worker(appCont
         if (!rateLimited && Prefs.enableEvents(ctx)) {
             runSection(R.string.check_events) { pollEvents(ctx, baseline, hardErrors) }
         }
-        if (!rateLimited && Prefs.enableSales(ctx)) {
-            runSection(R.string.check_sales) { pollSales(ctx, farmId, baseline, hardErrors) }
+        if (!rateLimited && (Prefs.enableSales(ctx) || Prefs.enableAcceptedOffers(ctx))) {
+            runSection(R.string.check_sales) { pollMarketplaceTrades(ctx, farmId, baseline, hardErrors) }
         }
         if (!rateLimited && Prefs.enablePrices(ctx)) {
             runSection(R.string.check_prices) {
@@ -273,9 +274,9 @@ class PollWorker(appContext: Context, params: WorkerParameters) : Worker(appCont
         EventAlarm.update(ctx, kind, id, title, text, reminderAt)
     }
 
-    // -------------------------------------------------------------- sales
+    // ------------------------------------------------- marketplace trades
 
-    private fun pollSales(
+    private fun pollMarketplaceTrades(
         ctx: Context,
         farmId: String,
         baseline: Boolean,
@@ -289,48 +290,35 @@ class PollWorker(appContext: Context, params: WorkerParameters) : Worker(appCont
                     feedback?.check(R.string.check_sales, profile, valid = false)
                     return
                 }
-                val seen = Prefs.seenSales(ctx)
-                val liveKeys = HashSet<String>()
-
-                for (i in 0 until trades.length()) {
-                    val trade = trades.optJSONObject(i) ?: continue
-                    val id = trade.str("id")
-                    if (id.isEmpty()) continue
-                    liveKeys += id
-
-                    if (seen.has(id)) continue
-                    if (baseline) {
-                        seen.put(id, trade.optLong("fulfilledAt"))
+                val alerts = Prefs.recordMarketplaceTrades(ctx, farmId, trades, baseline)
+                for (group in MarketplaceTradeAlerts.notificationGroups(alerts)) {
+                    val (kind, id, trade) = group.first()
+                    val sold = kind == MarketplaceTradeKind.LISTING_SOLD
+                    val enabled = if (sold) Prefs.enableSales(ctx) else Prefs.enableAcceptedOffers(ctx)
+                    if (!enabled) continue
+                    if (group.size > 1) {
+                        postListingBatch(ctx, group)
                         continue
                     }
-                    // Only trades *we* initiated count as our sale.
-                    val initiator = trade.optJSONObject("initiatedBy")?.opt("id")?.toString() ?: ""
-                    if (initiator != farmId) {
-                        seen.put(id, 0)
-                        continue
-                    }
-
                     val quantity = trade.optInt("quantity", 1)
                     val item = ItemIcons.nameForId(
                         ctx, trade.str("collection"), trade.optInt("itemId", -1),
                     ) ?: ctx.getString(R.string.notif_sale_item, trade.optInt("itemId", -1))
                     val sfl = trade.optDouble("sfl", 0.0)
-                    val buyer = trade.optJSONObject("fulfilledBy")?.str("username").orEmpty()
+                    val counterparty = trade.optJSONObject("fulfilledBy")?.str("username").orEmpty()
 
                     Notifier.postSale(
                         ctx, id,
-                        ctx.getString(R.string.notif_sale_title, quantity, item),
-                        if (buyer.isEmpty()) {
+                        ctx.getString(if (sold) R.string.notif_sale_title else R.string.notif_offer_accepted_title,
+                            quantity, item),
+                        if (counterparty.isEmpty()) {
                             ctx.getString(R.string.notif_sale_text, sfl)
                         } else {
-                            ctx.getString(R.string.notif_sale_text_from, sfl, buyer)
+                            ctx.getString(if (sold) R.string.notif_sale_text_from else R.string.notif_offer_accepted_text,
+                                sfl, counterparty)
                         },
                     )
-                    seen.put(id, trade.optLong("fulfilledAt"))
                 }
-
-                prune(seen, liveKeys)
-                Prefs.setSeenSales(ctx, seen)
                 feedback?.check(R.string.check_sales, profile)
             }
 
@@ -343,6 +331,20 @@ class PollWorker(appContext: Context, params: WorkerParameters) : Worker(appCont
                 }
             }
         }
+    }
+
+    private fun postListingBatch(ctx: Context, listings: List<MarketplaceTradeAlert>) {
+        val totals = MarketplaceTradeAlerts.listingTotals(listings)
+        val title = totals.quantity?.let {
+            ctx.getString(R.string.notif_sale_batch_title, NumberFormat.getIntegerInstance().format(it))
+        } ?: ctx.getString(R.string.notif_sale_batch_title_unknown)
+        val text = totals.flower?.let {
+            val amount = NumberFormat.getNumberInstance().apply { maximumFractionDigits = it.scale().coerceAtLeast(0) }
+                .format(it)
+            ctx.getString(R.string.notif_sale_batch_text, amount)
+        } ?: ctx.getString(R.string.notif_sale_batch_text_unknown)
+        val batchId = listings.map { it.id }.sorted().joinToString(",", prefix = "batch:")
+        Notifier.postSale(ctx, batchId, title, text)
     }
 
     // ------------------------------------------------------- price alerts
@@ -416,16 +418,6 @@ class PollWorker(appContext: Context, params: WorkerParameters) : Worker(appCont
         val prefix = "$kind:"
         val expired = seen.keys().asSequence().filter { it.startsWith(prefix) && it !in keep }.toList()
         expired.forEach { seen.remove(it) }
-    }
-
-    private fun prune(map: JSONObject, keep: Set<String>) {
-        val iterator = map.keys()
-        val drop = ArrayList<String>()
-        while (iterator.hasNext()) {
-            val key = iterator.next()
-            if (key !in keep) drop += key
-        }
-        drop.forEach { map.remove(it) }
     }
 
     /** `optString` but strict: only real JSON strings count, not `toString()`. */

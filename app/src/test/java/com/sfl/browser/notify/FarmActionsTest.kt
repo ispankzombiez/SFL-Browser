@@ -27,7 +27,24 @@ class FarmActionsTest {
             listOf("Refined Salt" to 2.0, "Honey Treat" to 11.0, "Truffle Seasoning" to 16.0),
             timers.map { it.label to it.yieldAmount },
         )
-        assertTrue(timers.all { it.category == TimerCategory.DISPLAY_ONLY })
+        assertTrue(timers.all { it.category == TimerCategory.SPICE_RACK })
+    }
+
+    @Test
+    fun namedAgingAndFermentationJobsScheduleThroughTheFarmTimerPlanner() {
+        val farm = JSONObject("""{
+            "buildings":{"Aging Shed":[{"coordinates":{"x":1,"y":1}}]},
+            "agingShed":{"racks":{
+                "aging":[{"id":"a","fish":"Anchovy","readyAt":3000},{"id":"b","fish":"Tuna","readyAt":3200}],
+                "fermentation":[{"id":"c","recipe":"Fermented Fish","readyAt":3400}]
+            }}
+        }""")
+        val timers = FarmTimers.fromJson(FarmTimers.toJson(FarmTimers.extract(farm, 0, null, 2000) { null }))
+        assertEquals(listOf("Anchovy", "Tuna", "Fermented Fish"), timers.map { it.label })
+        assertEquals(listOf(TimerCategory.AGING_RACK, TimerCategory.AGING_RACK, TimerCategory.FERMENTATION_RACK),
+            timers.map { it.category })
+        val groups = planTimerNotifications(timers, windowMs = 1000, offsetMs = 50) { _, _ -> false }
+        assertEquals(listOf(3050L, 3250L, 3450L), groups.map { it.fireAt }.sorted())
     }
 
     @Test
@@ -51,7 +68,7 @@ class FarmActionsTest {
     fun dailyTasksAppearOnlyWhileAvailableAndExpireAtUtcReset() {
         val midnight = Instant.parse("2026-11-18T00:00:00Z").toEpochMilli()
         val reset = Instant.parse("2026-11-19T00:00:00Z").toEpochMilli()
-        val quest = JSONObject().put("startAt", midnight).put("choices", org.json.JSONArray().put("a"))
+        val quest = JSONObject("""{"startAt":$midnight,"choices":[]}""")
         val budBox = JSONObject().put("openedAt", midnight - 1)
         val farm = JSONObject()
             .put("buds", JSONObject("""{"a":{"type":"Retreat"},"b":{"type":"Saphiro"},"c":{"type":"Snow"}}"""))
@@ -66,11 +83,30 @@ class FarmActionsTest {
         assertEquals(reset, TimerUi.dailyReset("Daily reset", reset - 1).readyAt)
         assertEquals(reset + 86_400_000, TimerUi.dailyReset("Daily reset", reset).readyAt)
 
-        quest.put("choices", org.json.JSONArray())
         budBox.put("openedAt", midnight + 500)
-        assertTrue(FarmTimers.extract(farm, 0, 123, midnight + 1000) { null }.isEmpty())
-        quest.put("choices", org.json.JSONArray().put("old choice"))
+        assertEquals("quest:telegram", FarmTimers.extract(farm, 0, 123, midnight + 1000) { null }.single().key)
         assertTrue(FarmTimers.extract(farm, 0, 123, reset) { null }.none { it.key == "quest:telegram" })
+    }
+
+    @Test
+    fun telegramClaimHidesTheQuestUntilNextUtcResetEvenWithEmptyChoices() {
+        val today = Instant.parse("2026-11-20T00:00:00Z").toEpochMilli()
+        val reset = FarmDay.nextReset(today)
+        val quest = JSONObject("""{"startAt":$today,"choices":[]}""")
+        val farm = JSONObject().put("telegram", JSONObject().put("quest", quest))
+        fun snapshot(at: Long) = FarmTimers.extractSnapshot(farm, 0, null, at) { null }
+
+        assertEquals("quest:telegram", snapshot(today + 1).timers.single().key)
+        quest.put("startAt", reset)
+        val claimed = snapshot(reset - 1)
+        assertTrue(claimed.timers.isEmpty())
+        assertEquals(reset, claimed.refreshAt)
+        val next = snapshot(reset).timers.single()
+        assertEquals("quest:telegram", next.key)
+        assertTrue(FarmDay.isVisibleTask(next, reset))
+
+        quest.remove("startAt")
+        assertTrue(snapshot(reset).timers.isEmpty())
     }
 
     @Test

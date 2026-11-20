@@ -1,0 +1,11 @@
+- Added a midnight UTC daily-reset alert that runs independently of the farm alert offset and the app's battery-saving mode.
+- Added toggleable completion alerts for the Aging, Fermentation, and Spice Racks. Rack entries show the individual fish or recipe names.
+- Added Village Project progress bars to Overview and an alert when a farm check first sees that the Cheers goal has been reached.
+- Added a Deliveries & Chores page for deliveries, chores, the Bounty Board, and animal bounties, with Not Done above Completed.
+- Added a Deliveries & Chores launcher shortcut and a menu on all three farm pages to switch between them.
+- Added separate switches and lead times for VIP expiration and the start of Calendar, Weather, and Special Events. The new reminders are on by default with a 10-minute lead.
+- Added pet satiation to Overview and toggleable alerts for animal sickness and mushroom spawns.
+- Added faction contribution status to Overview: Faction Kitchen tracks today, and Faction Pet tracks the current UTC week. Completed faction requests and the completed Bud Box appear at the bottom.
+- Fixed the Telegram daily quest badge in Overview and Timeline. It shows NOT DONE after reset, even before you open the quest, and disappears after you claim the reward and the app refreshes.
+- Added a separate alert for accepted marketplace buy offers. Multiple listings sold in one check now produce one alert with the total number of items sold and total FLOWER.
+- Updated the starter tabs to Home, SFL Calculator, and SFL Wiki. Upgrades preserve custom tabs and the custom Home URL. Calculator and Wiki appear immediately in the switcher and load when tapped.

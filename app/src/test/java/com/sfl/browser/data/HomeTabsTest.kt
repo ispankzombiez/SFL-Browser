@@ -2,23 +2,45 @@ package com.sfl.browser.data
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class HomeTabsTest {
     @Test
-    fun seedsOrderedEditableTabsOnlyOnFreshInstallWithoutSavedTabs() {
-        val tabs = checkNotNull(HomeTabs.initialTabs(hasSavedTabs = false, freshInstall = true))
+    fun installsStartWithTheThreeRequestedDestinationsInOrder() {
+        val tabs = HomeTabs.withStarterTabs(emptyList())
         assertEquals(
-            listOf("sfl.world" to "https://sfl.world/", "Sfl Wiki" to "https://wiki.sfl.world/en/home"),
-            tabs.map { it.name to it.url },
+            listOf(
+                "Home" to "https://sunflower-land.com/play/?ref=iSPANK",
+                "SFL Calculator" to "https://www.sfl-calculator.com/",
+                "SFL Wiki" to "https://wiki.sfl.world/",
+            ),
+            listOf("Home" to Prefs.starterHomeUrl(null)) + tabs.map { it.name to it.url },
         )
-        assertEquals(tabs.size, tabs.map(HomeTab::id).distinct().size)
-        assertTrue(tabs.all { HomeTabs.isValidUrl(it.url) })
-        assertEquals(emptyList<HomeTab>(), HomeTabs.initialTabs(hasSavedTabs = false, freshInstall = false))
-        assertNull(HomeTabs.initialTabs(hasSavedTabs = true, freshInstall = true))
-        assertNull(HomeTabs.initialTabs(hasSavedTabs = true, freshInstall = false))
+    }
+
+    @Test
+    fun upgradeReplacesUntouchedDefaultsAndKeepsCustomTabsAfterTheStarters() {
+        val custom = HomeTab("custom", "Timers", "https://example.com/timers")
+        val legacyWorld = HomeTab("default-sfl-world", "sfl.world", "https://sfl.world/")
+        val legacyWiki = HomeTab("default-sfl-wiki", "Sfl Wiki", "https://wiki.sfl.world/en/home")
+        assertEquals(
+            HomeTabs.withStarterTabs(emptyList()) + custom,
+            HomeTabs.withStarterTabs(listOf(custom, legacyWorld, legacyWiki)),
+        )
+        assertEquals("https://sunflower-land.com/play/?ref=iSPANK",
+            Prefs.starterHomeUrl("https://sunflower-land.com/play"))
+    }
+
+    @Test
+    fun upgradePreservesEditedDefaultsAndReusesAnExactStarterWithoutDuplicatingIt() {
+        val customHome = "https://sunflower-land.com/play/?ref=another"
+        val editedWiki = HomeTab("default-sfl-wiki", "My Wiki", "https://wiki.sfl.world/en/home")
+        val calculator = HomeTab("my-calculator", "SFL Calculator", "https://www.sfl-calculator.com/")
+        val migrated = HomeTabs.withStarterTabs(listOf(editedWiki, calculator))
+        assertEquals(listOf(calculator, HomeTabs.withStarterTabs(emptyList())[1], editedWiki), migrated)
+        assertEquals(migrated, HomeTabs.withStarterTabs(migrated))
+        assertEquals(customHome, Prefs.starterHomeUrl(customHome))
     }
 
     @Test

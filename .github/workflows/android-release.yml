@@ -124,56 +124,56 @@ jobs:
           files: ${{ steps.apk.outputs.asset }}
           fail_on_unmatched_files: true
 
-      - name: Clear uploaded assets from the latest GitHub Release
+      - name: Recreate the latest GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           APK_PATH: ${{ steps.apk.outputs.asset }}
+          VERSION: ${{ steps.apk.outputs.version }}
         run: |
           set -euo pipefail
           if [[ ! -s "$APK_PATH" ]]; then
-            echo "::error::The replacement APK is missing or empty. No assets were deleted."
+            echo "::error::The replacement APK is missing or empty. The latest release was not changed."
             exit 1
           fi
 
-          release_api="repos/$GITHUB_REPOSITORY/releases"
-          release_id=$(gh api --paginate "$release_api?per_page=100" \
+          repo_api="repos/$GITHUB_REPOSITORY"
+          release_id=$(gh api --paginate "$repo_api/releases?per_page=100" \
             --jq '.[] | select(.tag_name == "latest") | .id')
-          if [[ -z "$release_id" ]]; then
-            echo "The latest release does not exist yet; nothing to clear."
-            exit 0
-          fi
-          if [[ ! "$release_id" =~ ^[0-9]+$ ]]; then
+          if [[ -n "$release_id" && ! "$release_id" =~ ^[0-9]+$ ]]; then
             echo "::error::Expected a single release ID for the latest tag."
             exit 1
           fi
+          if [[ -n "$release_id" ]]; then
+            immutable=$(gh api "$repo_api/releases/$release_id" --jq '.immutable')
+            if [[ "$immutable" != false ]]; then
+              echo "::error::The existing latest release must be mutable to replace it."
+              exit 1
+            fi
+          fi
 
-          asset_ids=$(gh api --paginate "$release_api/$release_id/assets?per_page=100" --jq '.[].id')
-          while IFS= read -r asset_id; do
-            [[ -n "$asset_id" ]] || continue
-            gh api --method DELETE "$release_api/assets/$asset_id"
-          done <<< "$asset_ids"
+          latest_ref="$repo_api/git/refs/tags/latest"
+          previous_sha=$(gh api "$repo_api/git/matching-refs/tags/latest" \
+            --jq '.[] | select(.ref == "refs/tags/latest") | .object.sha')
+          if [[ -z "$previous_sha" ]]; then
+            gh api --method POST "$repo_api/git/refs" -f ref=refs/tags/latest -f sha="$GITHUB_SHA" --silent
+          elif [[ "$previous_sha" != "$GITHUB_SHA" ]]; then
+            gh api --method PATCH "$latest_ref" -f sha="$GITHUB_SHA" -F force=true --silent
+          fi
 
-      - name: Update latest GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: latest
-          name: SFL Browser (Latest)
-          body: |
-            Version: ${{ steps.apk.outputs.version }}
-          files: ${{ steps.apk.outputs.asset }}
-          fail_on_unmatched_files: true
-          make_latest: true
+          # Editing a published release does not update its publication date.
+          if [[ -n "$release_id" ]]; then
+            gh api --method DELETE "$repo_api/releases/$release_id" --silent
+          fi
+          gh release create latest "$APK_PATH" --repo "$GITHUB_REPOSITORY" \
+            --verify-tag --title "SFL Browser (Latest)" --notes "Version: $VERSION" --latest
 
-      - name: Verify the latest release contains only the new APK
-        env:
-          GH_TOKEN: ${{ github.token }}
-          APK_PATH: ${{ steps.apk.outputs.asset }}
-        run: |
-          set -euo pipefail
-          assets=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/latest" \
-            --jq '.assets[] | [.name, .state] | @tsv')
-          expected="${APK_PATH##*/}"$'\t'uploaded
-          if [[ "$assets" != "$expected" ]]; then
-            echo "::error::Expected exactly one uploaded asset on the latest release: ${APK_PATH##*/}"
+          published_id=$(gh api "$repo_api/releases/tags/latest" --jq 'select(.published_at != null) | .id')
+          tag_sha=$(gh api "$latest_ref" --jq '.object.sha')
+          assets=$(gh api "$repo_api/releases/tags/latest" --jq '.assets[] | [.name, .state, .digest] | @tsv')
+          digest=$(sha256sum "$APK_PATH")
+          expected="${APK_PATH##*/}"$'\t'uploaded$'\t'"sha256:${digest%% *}"
+          if [[ ! "$published_id" =~ ^[0-9]+$ || "$published_id" == "$release_id" \
+                || "$tag_sha" != "$GITHUB_SHA" || "$assets" != "$expected" ]]; then
+            echo "::error::Expected a new latest release at $GITHUB_SHA with exactly one matching APK."
             exit 1
           fi

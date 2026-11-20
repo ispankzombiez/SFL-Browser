@@ -131,6 +131,12 @@
             android:label="@string/timeline_title"
             android:parentActivityName=".ui.MainActivity" />
 
+        <activity
+            android:name=".overview.FarmTasksActivity"
+            android:exported="false"
+            android:label="@string/farm_tasks_title"
+            android:parentActivityName=".ui.MainActivity" />
+
         <!-- Fired by TimerAlarm at a timer's ready time. Not exported: only
              this app's own PendingIntents can reach it. -->
         <receiver
@@ -140,6 +146,14 @@
         <!-- Same, for raffle / auction start reminders. -->
         <receiver
             android:name=".notify.EventAlarmReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".notify.DailyResetReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".notify.FarmReminderReceiver"
             android:exported="false" />
 
         <!-- AlarmManager alarms are cleared on reboot (and can be on update),

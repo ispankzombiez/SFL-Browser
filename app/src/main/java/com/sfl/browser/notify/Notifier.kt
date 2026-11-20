@@ -151,6 +151,13 @@ object Notifier {
 
     // --------------------------------------------------------------- events
 
+    internal fun postFarmAlert(context: Context, key: String, title: String, text: String) {
+        post(context, idFor("farmAlert:$key"), base(context, CH_TIMERS)
+            .setContentTitle(title).setContentText(text)
+            .setStyle(Notification.BigTextStyle().bigText(text))
+            .setAutoCancel(true).build())
+    }
+
     /** Raffles and auctions: one notification per event id. */
     fun postEvent(context: Context, id: String, title: String, text: String) {
         val nid = idFor("event:$id")

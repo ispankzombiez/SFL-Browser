@@ -107,6 +107,7 @@
     <string name="help_crafting_box_mode">Choose separate item notifications or one Crafting Box notification timed from the last item to finish. Your notification offset still applies.</string>
     <string name="label_enable_events">Raffles &amp; auction drops</string>
     <string name="label_enable_sales">Marketplace listings of mine that sold</string>
+    <string name="label_enable_accepted_offers">Marketplace offers of mine that were accepted</string>
     <string name="label_enable_prices">Price alerts on collectibles</string>
     <string name="label_lead_time">Warn this long before a raffle or auction</string>
 
@@ -135,7 +136,7 @@
     <!-- Notifications -->
     <string name="channel_timers">Farm timers</string>
     <string name="channel_events">Raffles &amp; auctions</string>
-    <string name="channel_sales">Marketplace sales</string>
+    <string name="channel_sales">Marketplace trades</string>
     <string name="channel_prices">Price alerts</string>
     <string name="channel_errors">Check problems</string>
     <string name="notif_open_game">Open SFL-Browser</string>
@@ -166,6 +167,12 @@
     <string name="notif_sale_item">Item #%1$d</string>
     <string name="notif_sale_text">%1$s SFL</string>
     <string name="notif_sale_text_from">%1$s SFL · bought by %2$s</string>
+    <string name="notif_sale_batch_title">Sold: %1$s items</string>
+    <string name="notif_sale_batch_title_unknown">Marketplace listings sold</string>
+    <string name="notif_sale_batch_text">%1$s FLOWER total</string>
+    <string name="notif_sale_batch_text_unknown">Total FLOWER unavailable</string>
+    <string name="notif_offer_accepted_title">Offer accepted: %1$d × %2$s</string>
+    <string name="notif_offer_accepted_text">%1$s SFL · accepted by %2$s</string>
 
     <string name="notif_price_title">Price alert: %1$s</string>
     <string name="notif_price_text">Floor is %1$s FLOWER (trigger %2$s %3$s)</string>

@@ -21,12 +21,18 @@ enum class TimerCategory(val key: String) {
     PIG_FEEDING("pig_feeding"),
     ANIMAL_LOVE("animal_love"),
     CROP_MACHINE("crop_machine"),
+    SPICE_RACK("spice_rack"),
+    AGING_RACK("aging_rack"),
+    FERMENTATION_RACK("fermentation_rack"),
     DISPLAY_ONLY("display_only"),
     OTHER("other");
 
     val isFeeding: Boolean
         get() = this == CHICKEN_FEEDING || this == COW_FEEDING ||
             this == SHEEP_FEEDING || this == PIG_FEEDING
+
+    val isAgingShed: Boolean
+        get() = this == SPICE_RACK || this == AGING_RACK || this == FERMENTATION_RACK
 
     companion object {
         fun feedingFor(species: String): TimerCategory? = when (species) {
